@@ -4,7 +4,9 @@
 
 ## 基本模型
 
-### 经典回归模型
+​	在介绍所有的库支持，参考[Book PDSH]熟悉Python、Numpy、Pandas、Matplotlib以及sklearn库。
+
+### 经典回归模型[CS229]
 
 假设输入是符合特征为$x \in R^d$的样本，偏差项为$b$，$W$是权重（矩阵）参数，$\hat{y}$是对$y$的预估，经典回归模型可以表达如下：
 $$
@@ -167,21 +169,77 @@ $$
 
 ## 库和框架
 
-### 深度学习库对比(Keras, Pytouch) 
+### 深度学习库对比 
 
-Keras
+#### Keras
 
-### 深度学习框架对比(TensorFlow、Theano和CNTK)
+​	[Keras](https://keras.io/) 是提供了高度抽象的深度学习API，依赖于TensorFlow进行部署和分布式训练。 提供了丰富的数据预处理和网络配置功能，支持多种框架上运行，实现端到端的深度学习。
+
+![img](./1119747-20170707133635659-888158147.png)
+
+<center>图2： Keras模块结构, 图来自[Keras_Intro]</center>	
+
+构建网络步骤：
+
+1. 预处理： `datasets|TextVectorization|Normalization `， 调用adapt进行实际的预处理
+
+2. 构建网络层：
+
+   1. 支持的Model
+
+      * Sequential: keras.Sequential(),  a linear stock of layers;
+
+      * Functional: keras.Model(inputs=[input_], outputs=[output]), a graph of layers as nodes.
+
+   2.  Layer: `Input|Dense|Conv2D|MaxPooling|Output|custom`
+
+3. 编译: `compile(optimizer = SGD|RMSprop|Adam..., loss=MeanSquaredError|KLDivergence|CosineSimilarity..., metrics=[AUC...])`
+
+4. 训练: `fit(x, y, batch_size, epochs, validation_data...)`
+
+5. 预测: `predict(x)`
 
 
 
-参考：
+#### PyTouch
 
-[JRYB2011] [Algorithms for Hyper-Parameter Optimization](http://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf)
+​	[Pytouch](https://pytorch.org/)本身算是一个深度学习框架，但是也提供了比较完善的神经网络库Torch, 相对其他库，支持**动态计算图** 。相对静态计算图，先搭建图然后运算，动态图是运算与搭建同时进行，更为灵活，胆小效率相对较低。
 
-[Book DLP] Deep Learning with Python
+​	
 
-[Book DIDL] Diving Into Deep Learning
 
-[Book NNDL] https://nndl.github.io/ , 总结： https://zhuanlan.zhihu.com/p/162943650
 
+Keras和Pytouch的对比参考[Keras_vs_Pytouch].  Pytouch更加灵活，可定制程度高，Debug能力强，同时效率也较高，社区更活跃，适合research，Keras抽象程度高，适合新手入门，对小数据集和快速原型搭建非常适合。
+
+构建网络步骤：
+
+1. 构建网络层：
+   1. Model: 继承于nn.Module， 自定义graph；
+   2.  Layer: `Input|Dense|Conv2D|MaxPooling|Output|custom`
+2. 编译: `compile(optimizer = SGD|RMSprop|Adam..., loss=MeanSquaredError|KLDivergence|CosineSimilarity..., metrics=[AUC...])`
+3. 训练: `fit(x, y, batch_size, epochs, validation_data...)`
+4. 预测: `predict(x)`
+
+### 深度学习框架对比(Caffe2、Mxnet、TensorFlow、Theano和CNTK)
+
+
+
+## 参考
+
+[Book PDSH] : Python Data Science Handbook
+
+[CS229] :  https://see.stanford.edu/Course/CS229
+
+[JRYB2011] : [Algorithms for Hyper-Parameter Optimization](http://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf)
+
+[Book DLP] : Deep Learning with Python
+
+[Book DIDL] : Diving Into Deep Learning
+
+[Book NNDL] : https://nndl.github.io/ , 总结： https://zhuanlan.zhihu.com/p/162943650
+
+[Keras_Intro] : https://blog.csdn.net/zdy0_2004/article/details/74736656
+
+[Keras_vs_Pytouch] : https://deepsense.ai/keras-or-pytorch/
+
+[DL_framework] :  https://www.zhihu.com/question/46587833/answer/104288698
