@@ -203,9 +203,9 @@ $$
 
 
 
-#### PyTouch
+#### PyTorch
 
-​	[Pytouch](https://pytorch.org/)本身算是一个深度学习框架，同时也提供了支持GPU的Tensor计算库和神经网络库,即Torch, 相对其他深度学习库，支持[**动态计算图** ](https://github.com/pytorch/pytorch#dynamic-neural-networks-tape-based-autograd)。相对静态计算图(computational graph, 节点为张量，边为运算(Function, 卷积、基本运算等))，先搭建图然后运算，动态图是运算与搭建同时进行，更为灵活，但是效率相对较低。
+​	[PyTorch](https://pytorch.org/)本身算是一个深度学习框架，同时也提供了支持GPU的Tensor计算库和神经网络库, 相对其他深度学习库，支持[**动态计算图** ](https://github.com/pytorch/pytorch#dynamic-neural-networks-tape-based-autograd)。相对静态计算图(computational graph, 节点为张量，边为运算(Function, 卷积、基本运算等))，先搭建图然后运算，动态图是运算与搭建同时进行，更为灵活，但是效率相对较低。
 
 ​	![image-20200818121153162](./image-20200818121153162.png)
 
@@ -260,11 +260,21 @@ $$
 
 4. 预测: `net(test_x)`
 
-​	简单总结： Keras和Pytouch的对比参考[Keras_vs_Pytouch].  Pytouch更加灵活，可定制程度高，Debug能力强，同时效率也较高，社区更活跃，适合research，Keras抽象程度高，适合新手入门，对小数据集和快速原型搭建非常适合。
+​	简单总结： Keras和PyTorch的对比参考[Keras_vs_PyTorch].  PyTorch更加灵活，可定制程度高，Debug能力强，同时效率也较高，社区更活跃，适合research，Keras抽象程度高，适合新手入门，对小数据集和快速原型搭建非常适合。
 
-### 深度学习框架对比(Caffe2、Mxnet、TensorFlow、Theano和CNTK)
+### 深度学习框架对比
 
+​	通过文献[GSMVAPL] 我们可以大概了解目前深度学习库和框架之间的大概关系：
 
+<img src="./image-20200818131757482.png" alt="image-20200818131757482" style="zoom:50%;" />
+
+<center> 图4： 流行深度学习框架和库的层次关系 </center>	
+
+​	这里我们只关注框架。
+
+​	[GSMVAPL] P100-101对当前主要机器学习框架和库从licence、开发语言、计算图支持情况、API语言以及流行度、使用场景和项目发起者进行了分析，最流行的框架是TensorFlow，开发语言基本上是c++或者python，只有TensorFlow、PyTorch以及MXNet和Chainer支持动态图， 同时基本所有框架都支持Python API. 最后可以看到大部分框架都是由大厂牵头研发的，人力和财力投入巨大。
+
+​	从性能方面来看，没有一个框架在所有的场景和案例下面都绝对领先于其他框架。从文献[YCWSWQ]可以看到，不同的超参对性能和精确度都有非常大的影响。
 
 ## 参考
 
@@ -282,6 +292,11 @@ $$
 
 [Keras_Intro] : https://blog.csdn.net/zdy0_2004/article/details/74736656
 
-[Keras_vs_Pytouch] : https://deepsense.ai/keras-or-pytorch/
+[Keras_vs_PyTorch] : https://deepsense.ai/keras-or-pytorch/
 
 [DL_framework] :  https://www.zhihu.com/question/46587833/answer/104288698
+
+[GSMVAPL] [Machine Learning and Deep Learning frameworks and libraries for large-scale data mining: a survey](https://link.springer.com/content/pdf/10.1007/s10462-018-09679-z.pdf), Artificial Intelligence Review(2019), 77-124
+
+[YCWSWQ] [A Comparative Measurement Study of Deep Learning as a Service Framework](https://arxiv.org/pdf/1810.12210.pdf)
+
