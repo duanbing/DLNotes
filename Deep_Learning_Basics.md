@@ -179,9 +179,11 @@ $$
 
 <center>图2： Keras模块结构, 图来自[Keras_Intro]</center>	
 
+​	layers的具体介绍参考[layers](https://keras.io/api/layers/).
+
 构建网络步骤：
 
-1. 预处理： `datasets|TextVectorization|Normalization `， 调用adapt进行实际的预处理
+1. 预处理： `TextVectorization|Normalization `， 调用adapt进行实际的预处理
 
 2. 构建网络层：
 
@@ -203,22 +205,62 @@ $$
 
 #### PyTouch
 
-​	[Pytouch](https://pytorch.org/)本身算是一个深度学习框架，但是也提供了比较完善的神经网络库Torch, 相对其他库，支持**动态计算图** 。相对静态计算图，先搭建图然后运算，动态图是运算与搭建同时进行，更为灵活，胆小效率相对较低。
+​	[Pytouch](https://pytorch.org/)本身算是一个深度学习框架，同时也提供了支持GPU的Tensor计算库和神经网络库,即Torch, 相对其他深度学习库，支持[**动态计算图** ](https://github.com/pytorch/pytorch#dynamic-neural-networks-tape-based-autograd)。相对静态计算图(computational graph, 节点为张量，边为运算(Function, 卷积、基本运算等))，先搭建图然后运算，动态图是运算与搭建同时进行，更为灵活，但是效率相对较低。
 
-​	
+​	![image-20200818121153162](./image-20200818121153162.png)
 
+<center>图3： Pytorch模块结构</center>	
 
+​	构建网络步骤：
 
-Keras和Pytouch的对比参考[Keras_vs_Pytouch].  Pytouch更加灵活，可定制程度高，Debug能力强，同时效率也较高，社区更活跃，适合research，Keras抽象程度高，适合新手入门，对小数据集和快速原型搭建非常适合。
+1. 通过torchvision等进行数据加载；
 
-构建网络步骤：
+2. 构建网络， 继承nn.Module，定义layers;
 
-1. 构建网络层：
-   1. Model: 继承于nn.Module， 自定义graph；
-   2.  Layer: `Input|Dense|Conv2D|MaxPooling|Output|custom`
-2. 编译: `compile(optimizer = SGD|RMSprop|Adam..., loss=MeanSquaredError|KLDivergence|CosineSimilarity..., metrics=[AUC...])`
-3. 训练: `fit(x, y, batch_size, epochs, validation_data...)`
-4. 预测: `predict(x)`
+   1.  Layer: `torch.Linear| Conv2D||custom`
+   2. 在输入数据集上迭代`torch.functional.forward`;
+   3. 定义损失函数和优化器；
+
+3. 训练：
+
+   1. 通过网络处理输入,进行梯度反向传播：
+
+   ```
+   net.zero_grad()
+   out.backward(torch.randn(1, 10))
+   ```
+
+   2. 定义并且计算loss(输出和正确答案的距离）例如选择 `MSELoss`, 然后调用`loss.backward`；
+
+   ```
+   output = net(input)
+   target = torch.randn(10)  # 本例子中使用模拟数据
+   target = target.view(1, -1)  # 使目标值与数据值尺寸一致
+   criterion = nn.MSELoss()
+   
+   loss = criterion(output, target)
+   
+   net.zero_grad()     # 清零所有参数(parameter）的梯度缓存
+   loss.backward()
+   ```
+
+   3. 将梯度反向传播给网络的参数,更新网络的权重: 
+
+   ```
+   # 创建优化器(optimizer）
+   optimizer = optim.SGD(net.parameters(), lr=0.01)
+   
+   # 在训练的迭代中：
+   optimizer.zero_grad()   # 清零梯度缓存
+   output = net(input)
+   loss = criterion(output, target)
+   loss.backward()
+   optimizer.step()    # 更新参数
+   ```
+
+4. 预测: `net(test_x)`
+
+​	简单总结： Keras和Pytouch的对比参考[Keras_vs_Pytouch].  Pytouch更加灵活，可定制程度高，Debug能力强，同时效率也较高，社区更活跃，适合research，Keras抽象程度高，适合新手入门，对小数据集和快速原型搭建非常适合。
 
 ### 深度学习框架对比(Caffe2、Mxnet、TensorFlow、Theano和CNTK)
 
