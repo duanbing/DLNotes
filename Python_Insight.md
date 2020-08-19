@@ -161,7 +161,7 @@ Out[127]: "Module(body=[FunctionDef(name='add', args=arguments(posonlyargs=[], a
 
 ​	AST的解析是从[PyAST_FromNodeObject](https://github.com/python/cpython/blob/3.6/Python/ast.c#L769)开始的， 传入parser tree的根节点，遍历Parse Tree，按照语法规则[Language Reference](https://docs.python.org/3.6/reference/index.html)表示的syntax diagram，转成AST格式，传出一个_mod(`Include/Python-ast.h:44`)对象。也就是上图的Module。
 
-​	转换成AST之后，源码由`run_mod`函数开始进行Module的编译执行。核心逻辑在`PyAST_CompileObject` (Python/compile.c:301)完成，返回`PyCodeObject`。 在这个过程，首先要进行语义分析，然后建立对应的符号表。
+​	转换成AST之后，源码由`run_mod`函数开始进行Module的编译执行。核心逻辑在`PyAST_CompileObject` (Python/compile.c:301)完成，返回`PyCodeObject`。 在这个过程，首先要进行语义分析，通过`PySymtable_BuildObject`(Python/symtable.c:240)然后建立对应的符号表。
 
 ##### 语义分析(semantic analysis)
 
@@ -192,12 +192,13 @@ classDiagram
       
       class Module{
       		+ namespace: global,builtin
-          + Class
-          + Function()
+          + [Class]
+          + [Function]()
       }
       class Class{
           + namespace: local,builtin
-          + fields
+          + [variable]
+      	  + [method]
           - method()
       }
       class Function{
@@ -209,7 +210,7 @@ classDiagram
       Function <|-- BasicBlock
       class BasicBlock {
       	+ [instruction]
-      	+ BasicBlock
+      	+ [BasicBlock]
       }
       
       class global {
@@ -300,15 +301,65 @@ Symtable: type=module, id=140641729334304, name=top
             identifiers: ['self', 'b']
 ```
 
-可以看到，这种嵌套结构跟之前图1的定义非常的类似。符号表基本上将所有的对象的lifecycle以及对象之间的关系建立起来了，有了这些信息之后，就可以基于他们进行执行优化了，优化相关的细节可以参考龙书或者llvm相关的介绍。
+可以看到，这种嵌套结构跟之前图1的定义非常的类似。
 
+​	另外Python是支持多继承的，在进行MRO（方法解析顺序）的时候，容易出现二义性，Python使用 [C3](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.19.3910&rep=rep1&type=pdf) 算法解决这个问题。
 
+​	符号表基本上将所有的对象的lifecycle以及对象之间的关系建立起来了，有了这些信息之后，就可以基于他们进行执行优化了，优化相关的细节可以参考龙书或者llvm相关的介绍。
 
-​	//TODO 补充源码相关的信息
+##### 代码对象
+
+​	有了符号表信息，通过`compiler_mod/assemble/makecode`进一步生成`PyCodeObject`。通过内嵌函数[compile](https://docs.python.org/3.6/library/functions.html?#compile)函数可以近距离的观察code object的样子。
+
+```
+In [230]: code_str = """
+     ...: def add(a, b):
+     ...:   return a + b
+     ...: add(1, 2)
+     ...: """
+
+In [238]: code_obj = compile(code_str, 'mycode', 'exec')
+In [239]: code_obj.co_filename #文件名
+Out[239]: 'mycode'
+In [236]: code_obj.co_code  #字节码序列
+Out[236]: b'd\x00d\x01\x84\x00Z\x00e\x00d\x02d\x03\x83\x02\x01\x00d\x04S\x00'
+
+In [248]: dis.dis(code_obj)
+  2           0 LOAD_CONST               0 (<code object add at 0x12913bea0, file "mycode", line 2>)
+              2 LOAD_CONST               1 ('add')
+              4 MAKE_FUNCTION            0
+              6 STORE_NAME               0 (add)
+
+  4           8 LOAD_NAME                0 (add)
+             10 LOAD_CONST               2 (1)
+             12 LOAD_CONST               3 (2)
+             14 CALL_FUNCTION            2
+             16 POP_TOP
+             18 LOAD_CONST               4 (None)
+             20 RETURN_VALUE
+
+Disassembly of <code object add at 0x12913bea0, file "mycode", line 2>:
+  3           0 LOAD_FAST                0 (a)
+              2 LOAD_FAST                1 (b)
+              4 BINARY_ADD
+              6 RETURN_VALUE
+              
+              
+In [249]: code_obj.co_code[0]  # 下标0对应上面的dis结果的第一列
+Out[249]: 100
+In [250]: code_obj.co_code[1]
+Out[250]: 0
+```
+
+dis库可以将代码对象格式化打印出来，code_obj.co_code是字节码序列，按照`opcode`:`oparg`，的形式放置，例如第一个字节是100，通过查找[opcode表](https://github.com/python/cpython/blob/3.6/Include/opcode.h#L78) 看到其对应的指令是`LOAD_CONST`,对应dis出来的第一行的第二列，其对应的oparg是0，对应第三列，表示参数是空。
+
+​		
 
 #### 字节码
 
 ​	字节码可以理解为一种已经经过优化了的中间代码，但是不能直接执行，需要借助于虚拟机/解释器进行执行。
+
+​	
 
 #### 解释器
 
