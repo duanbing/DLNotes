@@ -72,6 +72,22 @@ $$
 
 <center> 图1： 深度学习计算过程，来自[Book DLP]</center>
 
+## 主要网络
+
+   CNN在计算机视觉领域应用非常广。借助于卷积层、池化层，借助于填充、步幅以及通道等形式， 参考[CNNs], [Book DIDL]给出了常见的卷积神经网络以及各自之间的关系。
+
+​	RNN对具有序列特性(时间、逻辑等)的数据非常有效，它能挖掘数据中的时序信息以及语义信息，利用了RNN的这种能力，应用在解决语音识别、语言模型、机器翻译以及时序分析等NLP领域。[Book DIDL]有专门的章节介绍各种RNN网络。
+
+​	相对于CNN每层神经元只能向上一层传播，样本的处理在不同时刻是独立的，RNN的输出可以在下一个时间戳上作用在自身上，也就是第k层神经元在t时刻，除了(k-1)层神经元在该时刻的输出外，还包括了其自身在(t-1)时刻的输出。图示如下：
+
+<img src="./c2eb9099048761fd25f0e90aa66d363a_1440w.jpg?source=1940ef5c" alt="img" style="zoom:50%;" />
+
+<center>图2： RNN在时间维度上展开，图来自[CNN_RNN_DNN]</center>
+
+​		(t+1)时刻网络的最终结果O(t+1)是该时刻输入和所有历史共同作用的结果, 实现某种记忆能力，达到对时间序列建模的目的。例如典型的n-gram语义理解等。
+
+​	   论文[ZLM]也对多层感知器、CNN、RNN之间做了分析和对比。
+
 ## 优化方法
 
 ​	优化难点：
@@ -296,7 +312,13 @@ $$
 
 [DL_framework] :  https://www.zhihu.com/question/46587833/answer/104288698
 
-[GSMVAPL] [Machine Learning and Deep Learning frameworks and libraries for large-scale data mining: a survey](https://link.springer.com/content/pdf/10.1007/s10462-018-09679-z.pdf), Artificial Intelligence Review(2019), 77-124
+[GSMVAPL] :  [Machine Learning and Deep Learning frameworks and libraries for large-scale data mining: a survey](https://link.springer.com/content/pdf/10.1007/s10462-018-09679-z.pdf), Artificial Intelligence Review(2019), 77-124
 
-[YCWSWQ] [A Comparative Measurement Study of Deep Learning as a Service Framework](https://arxiv.org/pdf/1810.12210.pdf)
+[YCWSWQ] :  [A Comparative Measurement Study of Deep Learning as a Service Framework](https://arxiv.org/pdf/1810.12210.pdf)
+
+[CNNs] :  https://zhuanlan.zhihu.com/p/47391705
+
+[CNN_RNN_DNN] https://www.zhihu.com/question/34681168/answer/84061846
+
+[ZLM] : 张荣. et.al《深度学习研究综述》, 2018《信息与控制》385-397.  https://arxiv.org/pdf/1804.01653.pdf
 
