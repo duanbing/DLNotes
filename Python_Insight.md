@@ -305,11 +305,11 @@ Symtable: type=module, id=140641729334304, name=top
 
 ​	另外Python是支持多继承的，在进行MRO（方法解析顺序）的时候，容易出现二义性，Python使用 [C3](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.19.3910&rep=rep1&type=pdf) 算法解决这个问题。
 
-​	符号表基本上将所有的对象的lifecycle以及对象之间的关系建立起来了，有了这些信息之后，就可以基于他们进行执行优化了，优化相关的细节可以参考龙书或者llvm相关的介绍。
+​	符号表基本上将所有的对象的lifecycle以及对象之间的关系建立起来了，有了这些信息之后，就可以创建代码对象了。
 
-##### 代码对象
+#### 代码对象
 
-​	有了符号表信息，通过`compiler_mod/assemble/makecode`进一步生成`PyCodeObject`。通过内嵌函数[compile](https://docs.python.org/3.6/library/functions.html?#compile)函数可以近距离的观察code object的样子。
+​	有了符号表信息，通过`compiler_mod/assemble/makecode`(Python/compile.c)进一步生成`PyCodeObject`。通过内嵌函数[compile](https://docs.python.org/3.6/library/functions.html?#compile)函数可以近距离的观察code object的样子。
 
 ```
 In [230]: code_str = """
@@ -351,21 +351,52 @@ In [250]: code_obj.co_code[1]
 Out[250]: 0
 ```
 
-dis库可以将代码对象格式化打印出来，code_obj.co_code是字节码序列，按照`opcode`:`oparg`，的形式放置，例如第一个字节是100，通过查找[opcode表](https://github.com/python/cpython/blob/3.6/Include/opcode.h#L78) 看到其对应的指令是`LOAD_CONST`,对应dis出来的第一行的第二列，其对应的oparg是0，对应第三列，表示参数是空。
+dis库可以将代码对象格式化打印出来，code_obj.co_code是字节码序列，按照`opcode`:`oparg`，的形式放置，例如第一个字节是100，通过查找[opcode表](https://github.com/python/cpython/blob/3.6/Include/opcode.h#L78) 看到其对应的指令是`LOAD_CONST`,对应dis出来的第一行的第二列，其对应的参数个数oparg是0，对应第三列，表示没有参数，如果有的话，就在第四列。 例如：
+
+```
+In [255]: code_obj.co_code[14]
+Out[255]: 131  #CALL_FUNCTION, https://github.com/python/cpython/blob/3.6/Include/opcode.h#L104
+In [256]: code_obj.co_code[15]
+Out[256]: 2
+```
+
+[CALL_FUNCTION](https://docs.python.org/3.6/library/dis.html?#opcode-CALL_FUNCTION)需要一个参数argc，表示参数个数，也就是code_obj.co_code[15]，实际的参数已经通过`LOAD_CONST`将常量压栈，切换函数帧([Function Frame](#frame))进入函数体之后，通过`LOAD_FAST`找到再将frame.f_code.co_varnames[0] 和frame.f_code.co_varnames[1]压栈，然后通过加法运算, 更多细节见解释器部分。
+
+​	注意代码对象的*co_varnames*是当前code block的局部变量，*co_names*则是当前block用到的非局部变量。   
+
+##### 字节码
+
+​	代码对象的`code_obj.co_code`保存了字节码。字节码是由符号表转换而来，通过`assemble`(Python/compile.c:5315)函数生成。生成真实的字节码之前，首先要对前面创建的符号表进行后序遍历(`dfs`)，然后将被遍历到的节点按照`opcode`:`oparg`的格式插入(`assemble_emit`)到字节码数组的末尾。
+
+​	Python的优化逻辑主要在`PyCode_Optimize`(Python/peephole.c:425)，主要执行了basic [peephole](https://legacy.python.org/workshops/1998-11/proceedings/papers/montanaro/montanaro.html) 优化。peehole更多的细节可以参考龙书或者llvm相关的介绍。
+
+#### 解释过程
+
+​	字节码可以理解为一种已经经过优化了的中间代码，但是不能直接执行，需要借助于虚拟机/解释器进行执行。 前面的compile_mod执行完成之后，就开始进入了`PyEval_EvalCodeEx`, 在这个函数里面，首先给当前的Code Object通过`PyFrame_New`创建一个[frame](https://github.com/python/cpython/blob/3.6/Include/frameobject.h#L17)。
+
+<div id="frame"></div>
+
+##### 帧frame
+
+​	帧是维护当前指令集上下文信息的容器，每个code block都需要创建一个帧。 它至少要包含当前指令所在的代码对象、所有可见的命名空间、全局变量、本地变量、内嵌函数等信息。同时为了能够在执行完成当前帧之后返回，到调用的地方，还定义了f_back字段，指向上一个frame。同时还需要引用到当前指令执行的进程、栈和字节码等信息。
+
+​	帧通过`PyFrame_New`创建的时候，首先要判断下代码对象的`code->co_zombieframe`是否为空，不为空就用它了，否则再去通过`PyObject_GC_NewVar`创建一个新。 然后再进行新的frame的初始化。co_zombieframe可以起到缓存的作用。
+
+​	帧是在解释过程动态创建的。
+
+##### 解释线程()	
+
+​	前面提到在Initialization环节，会对Python解释进程(Process)进行初始化。	
 
 ​		
 
-#### 字节码
+## 持续更新
 
-​	字节码可以理解为一种已经经过优化了的中间代码，但是不能直接执行，需要借助于虚拟机/解释器进行执行。
-
-​	
-
-#### 解释器
+​	 后面持续分析annotation、lib库、gc等实现。同时也会不停完善上面的部分。
 
 ## 参考
 
-[Book IPVM] :  https://leanpub.com/insidethepythonvirtualmachine
+[Book IPVM]  https://leanpub.com/insidethepythonvirtualmachine
 
 [DWG] : https://wiki.python.org/moin/DebuggingWithGdb
 
