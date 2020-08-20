@@ -384,19 +384,13 @@ Out[256]: 2
 
 ​	frame创建完成之后，通过`PyEval_EvalFrameEx`开始执行解释流程。
 
-#### 解释过程
-
 ##### 解释线程
 
 ​	前面提到在Initialization环节，会对Python解释进程(Process)进行初始化,  构造一个全局的`PyInterpreterState`对象。这个对象会维护一个元素为`PyThreadState`的双向队列。每次执行一个Code Block的时候，要创建一个对应的`PyThreadState`, 作为任务创建一个线程进行处理。
 
 ​	PyThreadState对应的进程的入口函数是`t_bootstrap`，其中通过`PyEval_AcquireThread/take_gil`获得GIL， GIL实际上是`pthread_cond_t* gil_cond`, 通过`pthread_cond_timedwait`去等待条件满足。如果满足表示获得锁。用完通过`drop_gil`释放。
 
-​	创建完线程和代码对象之后，就可以通过默认的执行器`_PyEval_EvalFrameDefault` (Python/ceval.c:722)进行字节码执行了。
-
-	#### 解释流程
-
-​	TODO
+​	创建完线程和代码对象之后，就可以通过默认的执行器`_PyEval_EvalFrameDefault` (Python/ceval.c:722)进行字节码执行了。执行的过程基本上就是上面解释的各个流程的组合，先从顶层的code block创建的字节码开始执行，然后执行具体的指令， 基本上都在重复上面提到的步骤。 
 
 ## 持续更新
 
