@@ -372,7 +372,7 @@ Out[256]: 2
 
 #### 解释过程
 
-​	字节码可以理解为一种已经经过优化了的中间代码，但是不能直接执行，需要借助于虚拟机/解释器进行执行。 前面的compile_mod执行完成之后，就开始进入了`PyEval_EvalCodeEx`, 在这个函数里面，首先给当前的Code Object通过`PyFrame_New`创建一个[frame](https://github.com/python/cpython/blob/3.6/Include/frameobject.h#L17)。
+​	字节码可以理解为一种已经经过优化了的中间代码，但是不能直接执行，需要借助于虚拟机/解释器进行执行。 前面的compile_mod执行完成之后，就开始进入了`PyEval_EvalCode/PyEval_EvalCodeEx/_PyEval_EvalCodeWithName`, 在这个函数里面，首先给当前的Code Object通过`PyFrame_New`创建一个[frame](https://github.com/python/cpython/blob/3.6/Include/frameobject.h#L17)。
 
 <div id="frame"></div>
 
@@ -382,13 +382,21 @@ Out[256]: 2
 
 ​	帧通过`PyFrame_New`创建的时候，首先要判断下代码对象的`code->co_zombieframe`是否为空，不为空就用它了，否则再去通过`PyObject_GC_NewVar`创建一个新。 然后再进行新的frame的初始化。co_zombieframe可以起到缓存的作用。
 
-​	帧是在解释过程动态创建的。
+​	frame创建完成之后，通过`PyEval_EvalFrameEx`开始执行解释流程。
 
-##### 解释线程()	
+#### 解释过程
 
-​	前面提到在Initialization环节，会对Python解释进程(Process)进行初始化。	
+##### 解释线程
 
-​		
+​	前面提到在Initialization环节，会对Python解释进程(Process)进行初始化,  构造一个全局的`PyInterpreterState`对象。这个对象会维护一个元素为`PyThreadState`的双向队列。每次执行一个Code Block的时候，要创建一个对应的`PyThreadState`, 作为任务创建一个线程进行处理。
+
+​	PyThreadState对应的进程的入口函数是`t_bootstrap`，其中通过`PyEval_AcquireThread/take_gil`获得GIL， GIL实际上是`pthread_cond_t* gil_cond`, 通过`pthread_cond_timedwait`去等待条件满足。如果满足表示获得锁。用完通过`drop_gil`释放。
+
+​	创建完线程和代码对象之后，就可以通过默认的执行器`_PyEval_EvalFrameDefault` (Python/ceval.c:722)进行字节码执行了。
+
+	#### 解释流程
+
+​	TODO
 
 ## 持续更新
 
