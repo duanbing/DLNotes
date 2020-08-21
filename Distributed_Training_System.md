@@ -8,5 +8,23 @@
 
 ### 主要挑战
 
-​		
+#### 训练的数据量急剧增加
+
+​	通过增加Batch Size来加速
+
+
+
+
+
+### 已有实现
+
+#### [Hogwild!](http://d0evi1.com/hogwild/)
+
+​	Hogwild!提供了一种”无锁方式并行运行SGD“。
+
+
+
+## 参考
+
+[1] Hogwild!: A Lock-Free Approach to Parallelizing Stochastic Gradient Descent
 
