@@ -41,7 +41,7 @@
 
 ## 分布式训练方法
 
-### 优化方法
+### 分布式机器学习算法
 
 ​	分布式训练最普遍的思路是数据并行和模型并行，因此前提是要有合理的数据和模型拆分方案。
 
@@ -147,22 +147,35 @@ $$
 
 #### 数据和模型聚合
 
-##### 加和平均
+##### 全部加和聚合
 
-##### 
+​	模型平均(MA)就是简单的将所有节点的模型的参数进行平均，得到新的模型。BMUF在MA的基础上加入了冲量，也就是在参数平均值上加入冲量进行调整。还有SSGD、EASGD等基于MA的方法。ADMM 在文献[b0], [10]给出了详细的介绍，区别MA是在优化问题里面引入了拉格朗日正则项，使得不容易出现过拟合，但是效率不如MA。
+
+##### 部分模型加和
+
+​	在同步梯度下降法的训练过程中，利用备份几点，防止个别慢节点拖慢整体训练效率。异步ADMM采用了类似备份节点的思路进行全局平均值$z$的聚合和分发，同时增加节点的最大更新延迟。去中心化的分布式机器学习算法(D-PSGD)则是将本地的梯度信息， 结合邻接点的最新模型乘以2个节点之间的关联度信息，来更新本地参数。
+
+##### 基于模型集成的聚合方法
+
+​	模型集成引入“模型压缩”环节，对样本进行再标注，解决非凸场景下的优化问题。
 
 
 
-#### 当前一些主流的训练方式
+#### 分布式机器学习算法
 
-当前主要的机器学习框架中结合如下多种并行方式进行计算
+​	分布式机器学习算法分为同步和异步。同步算法包括经典的SGD、MA、ADMM、EASGD等。异步包括异步SGD、Hogwild!等。
 
- 	1. GPU并行模式
-      	1. AlexNET等基于双GPU的并行训练；
- 	2. 多节点分批并行执行，取梯度平均值<sup>[4]</sup><sup>[5]</sup>；
- 	3. 图计算模式，结合数据流分析，分析依赖子图，然后将子图分发到多节点执行<sup>[5]</sup>；
- 	4. Pipeline<sup>[5]</sup><sup>[6]</sup>,将训练过程分解为不同的stages，然后利用线程池等技术并行执行训练，可以有效的解决资源瓶颈的问题，
- 	5. 平衡内存和IO使用，将稀疏网络转换为稠密网络<sup>[6]</sup>；
+##### 弹性平均SGD算法EASGD
+
+​	弹性平均SGD算法相对ADMM是不强制要求各个节点集成全局模型$z$,  也就是在优化函数中，EASGD不需要各个节点继承全局模型$z$，但是在优化方法加入全局模型（非全局模型在当前节点的反馈），保证局部模型跟全局模型的偏离不会过大。
+
+##### ASGD
+
+​	异步SGD非常简单，但是面临个别worker更新延迟过大导致梯度和模型失配的问题。
+
+##### Hogwild!/Cyclades算法
+
+​	Hogwild！的假设是在稀疏模型下，权重更新冲突的情况极少。Cyclades算法试图解决冲突问题，将样本进行分组，分组的要求是样本对应的参数尽量不重叠，然后将不同的数据送到不同的核上，完成异步无所的多线程更新。
 
 ### 节点间通信
 
@@ -179,41 +192,51 @@ $$
 
 ​	典型的实现有Spark MLLib等IMR框架。MapReduce过程在Map阶段进行数据分发、并行处理，在Reduce阶段进行实现数据的全局同步和规约。AllReduce在文献[9]，[b0]给出了比较详细的介绍，AllReduce定义了一套消息通信接口(MPI),  具体的通信拓扑可以实现为星型、树形、蝶形或者ReduceScatter+AllGather的形式。
 
-​	文献[9]特别给出了多种基于ReduceScatter+AllGather的优化算法。
+​	文献[9]特别给出了多种基于ReduceScatter+AllGather算法的优化。 例如：
 
-​	这种拓扑模式只支持同步通信。
+	* Binary Blocks Algorithm: 引入将机器分成多种blocks，每个blocks里面机器数是2的幂次方，然后按照各个block中机器数，从少到大排成行，从最小的开始，进行第一次Reduce，然后将Reduce结果发送给更大的block，进行第二次Reduce，直到将结果发送给机器数最大的Block。 然后开始从大到小，进行Gather。 这种算法最大程度的对计算力在不同的服务器之间进行均衡分配。
 
-
+​	这种拓扑模式只支持同步通信，并且只支持数据划分，不能支持模型划分， 对大的模型不适合，同时慢节点很容易拖慢整个训练。
 
 ##### 基于参数服务器的通信拓扑
 
-##### 基于数据流拓扑
+​	Google DistBelief以及微软DMTK采用的就是这种拓扑结构。例如DistBelief的2种拓扑结构如下：
+
+<img src="./image-20200826235814548.png" alt="image-20200826235814548" style="zoom:60%;" />
+
+	<center> 图2： 参数服务器介绍， 来自文献[2]</center>
+
+​		这种结构工作节点之间运行逻辑一致，但是相互不通信，只与参数服务器通信，通信方式可以是Push/Pull，步调可灵活设置。参数服务器依赖于异步参数更新机制，例如AdamGrad/冲量加速算法等。
+
+##### 基于数据流的通信拓扑
+
+​	计算任务很容易被描述为一个有向无环的数据流图，数据处理或者计算是节点，每条边代表数据以及流动方向，当2个节点位于2台不同的机器时候，他们之间会发生通信。TensorFlow就是使用的这种结构，示意如下：
+
+<img src="./image-20200827003919510.png" alt="image-20200827003919510" style="zoom:50%;" />
+
+<center> 图3： TensorFlow单机运算，图来自[b1] </center>
 
 
 
-##### 主要实现
+<img src="./image-20200827004104363.png" alt="image-20200827004104363" style="zoom:50%;" />
 
-###### DistBelief/Tensorflow<sup>[1]</sup><sup>[5]</sup>
 
-​	[DistBelief](https://en.wikipedia.org/wiki/TensorFlow#DistBelief)是TensorFlow的前身，通过并行、同步以及通信的优化，支持深度神经学习可以在节点内和节点间进行并行训练，支持超大规模参数的模型的训练。 实验显示，借助于自适应学习率调整和足够的计算资源，其在非凸问题上也有很好的表现。
 
-​	DistBelief提出了2种并行化的思路。
+<center>图4：  Tensorflow多机/设备运算，图来自[b1]	</center>
 
-*  Downpour SGD
+​		可以看到当PS和Worker分布不同节点的时候，就需要通过跨进程的传输方式进行参数或者中间加过的传递，对应在数据流通的操作就是将涉及到的边进行分裂，形成不同的子图片段，然后交给不同的Worker进行对应的计算。这种数据流模式非常符合适合参考编译器的实现进行各种CFG优化。例如公共表达式消除等。
 
-  DSGD是一种[在线算法](https://en.wikipedia.org/wiki/Online_algorithm),  首先将数据分片，分配到各个机器，然后每个机器在本地借助AdaGrad等自适应学习率优化方法进行模型训练，根据实现选定的nFetch和nPush参数，定期的拉取和推送本地更新的参数。  这种方式一方面提高了标准同步SGD算法的鲁棒性（节点失效导致更新夯住），更好的随机性。当模型较大的嘶吼，加速会随着机器数量的增加而提高，最好的情况通过128机器实现12倍的加速。在解决非凸问题上虽然理论支撑不足，但是实际效果还不错。
 
-* Sandblaster L-BFGS
 
-  Sandblaster是一种批处理算法，
+### 分布式计算理论
 
-###### Hogwild!
-
-​	Hogwild!提供了一种”无锁方式并行运行SGD“。
+​	TBD。
 
 ## 参考
 
 [b0] 《分布式机器学习: 算法，理论与实践》 刘铁岩...
+
+[b1] [《TensorFlow内核剖析》](https://github.com/horance-liu/tensorflow-internals), [PDF](https://raw.github.com/horance-liu/tensorflow-internals/master/tensorflow-internals.pdf), 刘光聪...
 
 [1] Jeffrey Dean, et.al.  Large Scale Distributed Deep Networks, 2012
 
@@ -232,6 +255,10 @@ $$
 [8] [https://zh.wikipedia.org/wiki/%E6%93%AC%E7%89%9B%E9%A0%93%E6%B3%95](https://zh.wikipedia.org/wiki/擬牛頓法)
 
 [9] Karanbir Chahal, et.al A Hitchhiker's Guide On Distributed Training of Deep Neural Networks, 2018
+
+[10] ADMM推导过程： https://www.zhihu.com/question/309568920/answer/580226096
+
+
 
 
 
