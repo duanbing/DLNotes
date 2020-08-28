@@ -59,15 +59,15 @@ $$
 
   ​	训练的基本步骤如下：	 
 
-  1. 加密样本对齐。这一部分借助于需要计算数据重合度，同时获得
+  1. 样本对齐。这一部分借助于PSI[9,10,11]（隐私保护求交）计算各方的用户ID交集；
 
-  2. 对齐样本进行模型加密训练：
+  2. 加密模型训练， 使用交集用户进行训练：
 
-     2.1. 由第三方C向A和B发送公钥，用来加密需要传输的数据；
+     2.1. 由第三方C常见一堆公私钥，并向A和B发送公钥，用来加密需要传输的数据；
 
      2.2. A和B分别计算和自己相关的特征中间结果，并加密交互，用来求得各自梯度和损失；
 
-     2.3. A和B分别计算各自加密后的梯度并添加掩码发送给C，同时B计算加密后的损失发送给C；
+     2.3. A和B分别计算各自加密后的梯度并添加掩码(additional mask)发送给C，同时B计算加密后的损失发送给C；
 
      2.4. C解密梯度和损失后回传给A和B，A、B去除掩码并更新模型。
 
@@ -79,7 +79,9 @@ $$
   $$
   X_i \neq X_j, Y_i \neq Y_j, I_i \neq I_j, \forall D_i, D_j, i \neq j
   $$
-  联邦迁移学习的步骤与纵向联邦学习相似，只是中间传递结果不同（实际上每个模型的中间传递结果都不同）。
+  迁移学习的核心是，找到源领域和目标领域之间的相似性。联邦迁移学习的步骤与纵向联邦学习相似，只是中间传递结果不同（实际上每个模型的中间传递结果都不同）。文献[12]给出了一种设计思路。
+
+​	由上面的介绍可以看到，传统的分布式机器学习跟水平联邦学习比较类似。
 
 ### 威胁模型
 
@@ -143,13 +145,11 @@ $$
 4. DP 差分隐私： 保留统计学特征的前提下去除个体特征以保护用户隐私
 
 
-
-### 数据求交
-
-### 权重合并
-
-
 ## 实例
+
+### LR
+
+### SecureBoost
 
 
 
@@ -165,3 +165,7 @@ $$
 6.  Q. Yang, Y. Liu, T. Chen & Y. Tong, Federated machine learning: Concepts and applications, ACM Transactions on Intelligent Systems and Technology (TIST) 10(2), 12:1-12:19, 2019
 7. Le Trieu Phong, Yoshinori Aono, Takuya Hayashi, Lihua Wang, and Shiho Moriai. 2018. Privacy-Preserving Deep Learning via Additively Homomorphic Encryption. IEEE Trans. Information Forensics and Security，13, 5 (2018),1333–1345
 8. Reza Shokri and Vitaly Shmatikov. 2015. Privacy-Preserving Deep Learning. In Proceedings of the 22nd ACM SIGSAC Conference on Computer and Communications Security (CCS ’15). ACM, New York, NY, USA, 1310–1321. 
+9. https://anquan.baidu.com/article/860 
+10. Chen, H., Laine, K., and Rindal, P. Fast private set intersection from homomorphic encryption. Cryptology ePrint Archive, Report 2017/299, 2017.https://eprint.iacr.org/2017/299.
+11. https://zhuanlan.zhihu.com/p/85422763
+12. Yang Liu, Yan Kang, Chaoping Xing, Tianjian Chen, Qiang Yang, Fellow, IEEE, A Secure Federated Transfer Learning Framework, 2018
