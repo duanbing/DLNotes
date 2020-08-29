@@ -250,7 +250,7 @@ Protocol:
 
 ### SecureBoost[14]
 
-​	传统的XGBoost协议
+​	TBD.
 
 
 
