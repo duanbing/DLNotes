@@ -68,7 +68,7 @@ $$
 
 基本过程如下：
 
-<img src=".\image-20200817124701562.png" alt="image-20200817124701562" style="zoom:50%;" />
+<img src="chapter2/1.1.png" alt="image-20200817124701562" style="zoom:50%;" />
 
 <center> 图1： 深度学习计算过程，来自[Book DLP]</center>
 
@@ -80,7 +80,7 @@ $$
 
 ​	相对于CNN每层神经元只能向上一层传播，样本的处理在不同时刻是独立的，RNN的输出可以在下一个时间戳上作用在自身上，也就是第k层神经元在t时刻，除了(k-1)层神经元在该时刻的输出外，还包括了其自身在(t-1)时刻的输出。图示如下：
 
-<img src="./c2eb9099048761fd25f0e90aa66d363a_1440w.jpg?source=1940ef5c" alt="img" style="zoom:50%;" />
+<img src="./chapter2/1.2.png" alt="img" style="zoom:50%;" />
 
 <center>图2： RNN在时间维度上展开，图来自[CNN_RNN_DNN]</center>
 
@@ -191,7 +191,7 @@ $$
 
 ​	[Keras](https://keras.io/) 是提供了高度抽象的深度学习API，依赖于TensorFlow进行部署和分布式训练。 提供了丰富的数据预处理和网络配置功能，支持多种框架上运行，实现端到端的深度学习。
 
-![img](./1119747-20170707133635659-888158147.png)
+![img](./chapter2/1.3.png)
 
 <center>图2： Keras模块结构, 图来自[Keras_Intro]</center>	
 
@@ -223,7 +223,7 @@ $$
 
 ​	[PyTorch](https://pytorch.org/)本身算是一个深度学习框架，同时也提供了支持GPU的Tensor计算库和神经网络库, 相对其他深度学习库，支持[**动态计算图** ](https://github.com/pytorch/pytorch#dynamic-neural-networks-tape-based-autograd)。相对静态计算图(computational graph, 节点为张量，边为运算(Function, 卷积、基本运算等))，先搭建图然后运算，动态图是运算与搭建同时进行，更为灵活，但是效率相对较低。
 
-​	![image-20200818121153162](./image-20200818121153162.png)
+​	![image-20200818121153162](chapter2/1.4.png)
 
 <center>图3： Pytorch模块结构</center>	
 
@@ -282,7 +282,7 @@ $$
 
 ​	通过文献[GSMVAPL] 我们可以大概了解目前深度学习库和框架之间的大概关系：
 
-<img src="./image-20200818131757482.png" alt="image-20200818131757482" style="zoom:50%;" />
+<img src="chapter2/1.5.png" alt="image-20200818131757482" style="zoom:50%;" />
 
 <center> 图4： 流行深度学习框架和库的层次关系 </center>	
 

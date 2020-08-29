@@ -59,7 +59,7 @@ print(add(1.0, 2))
 
 ​	从高度抽象的层面来看，Python的执行过程如下：
 
-<img src="https://leanpub.com/site_images/insidethepythonvirtualmachine/birdsEyeView.png" alt="Figure 2.1: Flow during the execution of source code" style="zoom:40%;" />
+<img src="chapter1/1.1.png"  style="zoom:50%;" />
 
 <center> 图1： 编译执行过程，来自[Book IPVM] </center>
 
@@ -147,7 +147,7 @@ In [118]: pprint(parser.st2tuple(st))
 
 ​	语法分析是将Parse Tree转换为AST。通过[vpyast](https://vpyast.appspot.com/)可以很方便的查看AST的结构。 例如上面的例子的AST结构如下：
 
-​	<img src="./image-20200818233438849.png" alt="image-20200818233438849" style="zoom:50%;" />
+​	<img src="chapter1/1.2.png" alt="image-20200818233438849" style="zoom:50%;" />
 
 ​	也可以借助ast库进行分析, 例如：
 

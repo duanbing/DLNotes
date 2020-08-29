@@ -14,7 +14,7 @@ Federated learning is a machine learning setting where multiple entities (client
 
 ​	定义N个数据提供方${F_1,...,F_n}$以及他们对应的数据${D_1, ..., D_n}, D = \bigcup\limits_{i=1}^nD_i$,  假设在数据$D$下真实训练的模型结果为$M_{sum}$, 准确值为$V_{sum}$, 基于联邦学习模型计算的模型结果为$M_{fed}$,准确值为$V_{fed}$,要求对于足够小的非负数$\delta$, 满足 :
 $$
-|V_{sum} - V_{fed}| < \delta
+|V_{sum} - V_{fed}| < delta
 $$
 将其称之为$\delta-accuracy$损失。
 
@@ -30,7 +30,7 @@ $$
   $$
   
 
-  <img src="./4.1.png" alt="image-20200828081614684" style="zoom:50%;" />
+  <img src="./chapter4/4.1.png" alt="image-20200828081614684" style="zoom:50%;" />
 
   <center> 图1： Architecture for a horizontal federated learning system 图来自[6]</center>
 
@@ -53,7 +53,7 @@ $$
   $$
   典型的架构图下。
 
-  <img src="./4.2.png" alt="image-20200828083436876" style="zoom:60%;" />
+  <img src="./chapter4/4.2.png" alt="image-20200828083436876" style="zoom:60%;" />
 
   <center> 图1：  Architecture for a vertical federated learning system 图来自[6]</center>
 
@@ -232,7 +232,7 @@ Protocol:
 
 ​	协议：
 
-<img src="./4.3.png" alt="image-20200829171613978" style="zoom:60%;" />
+<img src="./chapter4/4.3.png" alt="image-20200829171613978" style="zoom:60%;" />
 
 <center>图3： LR训练协议</center>
 
@@ -244,7 +244,7 @@ Protocol:
 
    预测计算协议如下：
 
-   <img src="./4.4.png" alt="image-20200829173349087" style="zoom:60%;" />
+   <img src="./chapter4/4.4.png" alt="image-20200829173349087" style="zoom:60%;" />
 
    协调者C发起查询，给A和B用户ID，然后获得密文评估结果，然后聚合之后执行解密获得明文结果。
 

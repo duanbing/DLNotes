@@ -82,7 +82,7 @@
   * 纵向跨层划分： 例如machine1，3 和machine 2，4之间
   * 模型随机划分： 骨架网络 + 随机的非骨架网络的神经元参数
 
-  <img src="./image-20200826064840493.png" alt="·" style="zoom:70%;" />
+  <img src="chapter3/1.1.png" alt="·" style="zoom:70%;" />
 
   <center>图1： An example of model parallelism in DistBelief <sup>[1]</sup></center>
 
@@ -202,7 +202,7 @@ $$
 
 ​	Google DistBelief以及微软DMTK采用的就是这种拓扑结构。例如DistBelief的2种拓扑结构如下：
 
-<img src="./image-20200826235814548.png" alt="image-20200826235814548" style="zoom:60%;" />
+<img src="chapter3/1.2.png" alt="image-20200826235814548" style="zoom:60%;" />
 
 	<center> 图2： 参数服务器介绍， 来自文献[2]</center>
 
@@ -212,13 +212,13 @@ $$
 
 ​	计算任务很容易被描述为一个有向无环的数据流图，数据处理或者计算是节点，每条边代表数据以及流动方向，当2个节点位于2台不同的机器时候，他们之间会发生通信。TensorFlow就是使用的这种结构，示意如下：
 
-<img src="./image-20200827003919510.png" alt="image-20200827003919510" style="zoom:50%;" />
+<img src="chapter3/1.3.png" alt="image-20200827003919510" style="zoom:50%;" />
 
 <center> 图3： TensorFlow单机运算，图来自[b1] </center>
 
 
 
-<img src="./image-20200827004104363.png" alt="image-20200827004104363" style="zoom:50%;" />
+<img src="chapter3/1.4.png" alt="image-20200827004104363" style="zoom:50%;" />
 
 
 
