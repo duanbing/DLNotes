@@ -1,5 +1,4 @@
 #!/usr/local/bin/python3
-import mxnet as mx;
 from mxnet import nd;
 from mxnet.gluon import nn;
 
@@ -12,7 +11,9 @@ class MLP(nn.Block):
     def forward(self, x):
         return self.output(self.hidden(x))
 
-X = nd.random.uniform(shape=(2, 20))
 net = MLP()
 net.initialize()
-w = net(X)
+
+X = nd.random.uniform(shape=(2, 20))
+Y = net(X)
+print(net[0].params)

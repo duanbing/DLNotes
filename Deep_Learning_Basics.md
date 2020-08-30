@@ -72,6 +72,12 @@ $$
 
 <center> 图1： 深度学习计算过程，来自[Book DLP]</center>
 
+### 梯度计算[COCG]
+
+​	
+
+
+
 ## 主要网络
 
    CNN在计算机视觉领域应用非常广。借助于卷积层、池化层，借助于填充、步幅以及通道等形式， 参考[CNNs], [Book DIDL]给出了常见的卷积神经网络以及各自之间的关系。
@@ -321,4 +327,6 @@ $$
 [CNN_RNN_DNN] https://www.zhihu.com/question/34681168/answer/84061846
 
 [ZLM] : 张荣. et.al《深度学习研究综述》, 2018《信息与控制》385-397.  https://arxiv.org/pdf/1804.01653.pdf
+
+[COCG] http://colah.github.io/posts/2015-08-Backprop/
 
