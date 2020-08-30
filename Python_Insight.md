@@ -396,6 +396,12 @@ Out[256]: 2
 
 ​	 后面持续分析annotation、lib库、gc等实现。同时也会不停完善上面的部分。
 
+### Python FFI
+
+官方文档：[文档](https://docs.python.org/2/library/ctypes.html)	[示例](example/py/ffi) 
+
+跟Golang不一样的是，Python的GC不会立即回收送入到C Runtime的局部变量(即使是符合类型)。因此在传递大的数组的时候只需要使用POINTER进行转换，就可以将Python Runtime的内存送入到C Runtime。
+
 ## 参考
 
 [Book IPVM]  https://leanpub.com/insidethepythonvirtualmachine
