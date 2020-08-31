@@ -72,13 +72,42 @@ $$
 
 <center> 图1： 深度学习计算过程，来自[Book DLP]</center>
 
-### 梯度计算
+### 自动求导
 
-​	文章[COCG]给出了基于计算图进行后向传播计算的原因，主要原因是相对前向传播来说，便于一次性算出所有的目标梯度。MXNet提供了对任意函数求梯度的方法, 例子见[这里](./example/mxnet2.3.1_autograd.py)。 
+​	文章[COCG]给出了基于计算图进行后向传播计算的原因，主要原因是相对前向传播来说，便于一次性算出所有的目标梯度。MXNet提供了对任意函数求梯度的方法, 例子见`./example/mxnet2.3.1_autograd.py`。
 
-​	
+​	课程[AG]将微分求解分为有如下几种：
 
+ * 符号微分：是指基于计算图进行微分计算，常借助于求和、乘积以及链式法则等。 类似前向计算，出现指数级计算复杂度；
 
+ * 数值微分：  利用微分定义计算， 误差较大。
+
+ * 后向传播(自动梯度)： 利用计算图进行后向传播计算，例如计算 $f = \frac{1}{1 + e^{-(w_0 + w_1x_1+w_2x_2)}}$， 以运算操作符为点，数据流为边，建立数据流图如下图的黑色部分，红色部分是后向梯度计算。
+
+   <img src="./chapter2/2.6.png" alt="image-20200831131434014" style="zoom:30%;" />
+
+   <center>图6： 自动求导， 图来自[AG] P27</center>
+
+   ​	从$1/x$开始计算出每个点的微分之后，然后输入为 $1 =\frac{\partial x}{\partial x}$, 进行逆向计算，实际效果如下：
+
+   <img src="./chapter2/2.7.png" alt="image-20200831132957661" style="zoom:30%;" />
+
+   ​	从而在$x_1, x_2$处分别计算得到 $\frac{\partial J}{\partial w_1}, \frac{\partial J}{\partial w_2}$。
+
+   计算全部节点符号梯度的伪代码如下：
+
+   ```python
+   def gradient(out):
+   	node_to_grad[out] = 1  # 标记尾部节点的梯度为1
+   	nodes = get_node_list(out)  # 获得所有的前向节点
+   	for node in reverse_topo_order(nodes): # 按照拓扑序逆序遍历节点，例如上图从1/x开始，反向去计算$w_i, i \in {1, 2}$
+   		grad := sum partial adjoints from output edges  #  找出多个出边
+   		input_grads := node.op.gradient(input, grad) for input in node.inputs # 计算多个出边的梯度
+   		add input_grads to node_to_grad  #将多个出边计算的梯度加起来
+   	return node_to_grad
+   ```
+
+   
 
 ## 主要网络
 
@@ -331,4 +360,6 @@ $$
 [ZLM] : 张荣. et.al《深度学习研究综述》, 2018《信息与控制》385-397.  https://arxiv.org/pdf/1804.01653.pdf
 
 [COCG] http://colah.github.io/posts/2015-08-Backprop/
+
+[AG]  http://dlsys.cs.washington.edu/pdf/lecture4.pdf
 
