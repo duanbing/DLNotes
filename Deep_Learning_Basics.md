@@ -140,10 +140,6 @@ $$
     \end{align}
     $$
 
-* 优化算法
-
-  ​	小批量梯度下降,  超参： batch size, learning rate
-
 * 预测： $\hat y$
 
 ### 多层感知器
@@ -152,17 +148,22 @@ $$
 
  * 训练
    $$
-   
+   H = \phi (XW_H + b_H) \\
+   O = HW_O + b_O \\
+   l(W_H, W_O, B_H, B_O) =  SoftmaxCrossEntropyLoss \\
+   W_H, W_O, B_H, B_O = \mathop {argmin}_{w, b} l(W_H, W_O, B_H, B_O)
    $$
-   
+   其中激活函数$\phi$包括：
 
- * 优化算法
+   * $relu(x) = max(x, 0)$
+   * $sigmoid(x) = \frac{1}{1 + exp(-x)}$
+   * $tagh(x) = \frac{1 - exp(-x)}{1 + exp(-x)}$
 
-	* 预测
+	* 预测： $O$
 
 ### CNN
 
-
+​	
 
 ### DNN
 
