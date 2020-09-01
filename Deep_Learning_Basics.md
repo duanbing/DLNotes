@@ -113,7 +113,64 @@ $$
 
 ## 主要网络
 
-   CNN在计算机视觉领域应用非常广。借助于卷积层、池化层，借助于填充、步幅以及通道等形式， 参考[CNNs], [Book DIDL]给出了常见的卷积神经网络以及各自之间的关系。
+### 单层网络
+
+​	LR针对连续数据分类，maxsoft针对离散数据分类。
+
+如下：
+
+* 训练：
+
+  * LR 
+    $$
+    \begin{align}
+    \hat y &= wx + b; \\
+    l(w, b) &= \frac{1}{2}(\hat y - y)^2 \\
+    w, b &= \mathop {argmin}_{w, b} l(w, b)
+    \end{align}
+    $$
+    
+
+  * maxsoft
+    $$
+    \begin{align}
+    \hat y &= wx + b; \\
+    l(w, b) &= \frac{1}{n}\sum\limits_{j=1}^nH(y^{(i)}, \hat y^{(i)}), H(y, \hat y) = - \sum\limits_{j=1}^qy_j^{(i)}log\ {\hat y}^{(i)}\\
+    w, b &= \mathop {argmin}_{w, b} l(w, b)
+    \end{align}
+    $$
+
+* 优化算法
+
+  ​	小批量梯度下降,  超参： batch size, learning rate
+
+* 预测： $\hat y$
+
+### 多层感知器
+
+​	引入隐藏层，介于输入和输出层之间，全连接。
+
+ * 训练
+   $$
+   
+   $$
+   
+
+ * 优化算法
+
+	* 预测
+
+### CNN
+
+
+
+### DNN
+
+
+
+### 简单总结
+
+​	CNN在计算机视觉领域应用非常广。借助于卷积层、池化层，借助于填充、步幅以及通道等形式， 参考[CNNs], [Book DIDL]给出了常见的卷积神经网络以及各自之间的关系。
 
 ​	RNN对具有序列特性(时间、逻辑等)的数据非常有效，它能挖掘数据中的时序信息以及语义信息，利用了RNN的这种能力，应用在解决语音识别、语言模型、机器翻译以及时序分析等NLP领域。[Book DIDL]有专门的章节介绍各种RNN网络。
 
