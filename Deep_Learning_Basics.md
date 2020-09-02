@@ -163,9 +163,52 @@ $$
 
 ### CNN
 
-​	
+​	引入卷积核, 将输入和卷积核进行二维相关运算。相关运算涉及到填充和步长。卷积层用来检测图像中的边缘，找到像素变化的位置。池化层缓解卷积层对位置的过度敏感性。Conv2D如果涉及到逐个元素赋值，需要注意不能直接进行求导。
+
+ * LeNet: LeNet展示了通过梯度下降训练卷积神经网络可以达到手写数字识别在当时最先进的结果。 一共7层，示意如下：
+
+   ![img](./chapter2/lenet.png)
+
+   ```
+   net.add(nn.Conv2D(channels=6, kernel_size=5, activation='sigmoid'),
+           nn.MaxPool2D(pool_size=2, strides=2),
+           nn.Conv2D(channels=16, kernel_size=5, activation='sigmoid'),
+           nn.MaxPool2D(pool_size=2, strides=2),
+           # Dense会默认将(批量大小, 通道, 高, 宽)形状的输入转换成
+           # (批量大小, 通道 * 高 * 宽)形状的输入
+           nn.Dense(120, activation='sigmoid'),
+           nn.Dense(84, activation='sigmoid'),
+           nn.Dense(10))
+   ```
+
+ * AlexNet: 首次证明了学习到的特征可以超越手工设计的特征，从而一举打破计算机视觉研究的前状。一共8层。其中有5层卷积和2层全连接隐藏层，以及1个全连接输出层。
+
+   ```
+   net.add(nn.Conv2D(96, kernel_size=11, strides=4, activation='relu'),
+           nn.MaxPool2D(pool_size=3, strides=2),
+           # 减小卷积窗口，使用填充为2来使得输入与输出的高和宽一致，且增大输出通道数
+           nn.Conv2D(256, kernel_size=5, padding=2, activation='relu'),
+           nn.MaxPool2D(pool_size=3, strides=2),
+           # 连续3个卷积层，且使用更小的卷积窗口。除了最后的卷积层外，进一步增大了输出通道数。
+           # 前两个卷积层后不使用池化层来减小输入的高和宽
+           nn.Conv2D(384, kernel_size=3, padding=1, activation='relu'),
+           nn.Conv2D(384, kernel_size=3, padding=1, activation='relu'),
+           nn.Conv2D(256, kernel_size=3, padding=1, activation='relu'),
+           nn.MaxPool2D(pool_size=3, strides=2),
+           # 这里全连接层的输出个数比LeNet中的大数倍。使用丢弃层来缓解过拟合
+           nn.Dense(4096, activation="relu"), nn.Dropout(0.5),
+           nn.Dense(4096, activation="relu"), nn.Dropout(0.5),
+           # 输出层。由于这里使用Fashion-MNIST，所以用类别数为10，而非论文中的1000
+           nn.Dense(10))
+   ```
+
+* VGG：  VGG块的组成规律是连续使用数个相同的填充为1、窗口形状为3×3的卷积层后接上一个步幅为2、窗口形状为2×2的最大池化层。VGG块作为卷积层，后面接上全连接层。
+* NiN： LeNet、AlexNet和VGG在设计上的共同之处是：先以由卷积层构成的模块充分抽取空间特征，再以由全连接层构成的模块来输出分类结果，它提出了另外一个思路，即串联多个由卷积层和“全连接”层构成的小网络来构建一个深层网络。NiN去除了容易造成过拟合的全连接输出层，而是将其替换成输出通道数等于标签类别数的NiN块和全局平均池化层。
+*  GoogLeNet: GoogLeNet将多个设计精细的Inception块和其他层串联起来。其中Inception块的通道数分配之比是在ImageNet数据集上通过大量的实验得来的。Inception块相当于一个有4条线路的子网络。它通过不同窗口形状的卷积层和最大池化层来并行抽取信息，并使用1×1卷积层减少通道数从而降低模型复杂度。
 
 ### DNN
+
+​	DNN通过隐藏状态来存储/记忆之前时间步的信息，常用在语言模型中。常见的网络包括GRU、LSTM等。
 
 
 
