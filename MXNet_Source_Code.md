@@ -65,9 +65,114 @@
 
 ### Runtime Dependency Engine
 
-​	[运行时依赖引擎](https://mxnet.apache.org/versions/1.6/api/architecture/note_engine)主要负责计算图的全生命周期管理，目标是最大程度的实现并行计算。计算图也就是训练任务/通用计算任务的数据流图。
+​	[运行时依赖引擎](https://mxnet.apache.org/versions/1.6/api/architecture/note_engine)（简称RDE）主要负责计算图的全生命周期管理，目标是最大程度的实现并行计算。计算图也就是训练任务/通用计算任务的数据流图。
 
-​	
+​	Mxnet在构建数据流通的时候，还要充分考虑内存的复用，因此，mxnet增加了一个特殊的节点: `Object::__del__`节点。当当前对象Object不在被使用的时候，就会自动插入这个del节点，对齐独占的内存进行释放。另外就是对于随机数分配，考虑到随机数分配器是线程不安全的，因此要串行化分配随机数资源。
+
+​	有了以上约束，我们就可以开始构建依赖关系。按照正常的思路，基于数据流的依赖关系，可以借助[MVCC](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)的思路，引入版本控制，对于**写**产生新的版本且标记其引用的版本，对于**读**标记其引用的版本。然后基于这些依赖关系，构建出一个**DAG**。然后对DAG进行拓扑排序，然后通过遍历叶子节点找出所有不同的根节点（逆拓扑遍历），找出**独立子图**。  独立子图之间是可以交给多个线程独立计算。**但是**, 对于机器学习任务，要支持动态计算图的话，就不能这么简单的计算全局的独立子图了。于是乎，。。。。
+
+​	以上就是依赖引擎的基本原理，[官网](https://mxnet.apache.org/versions/1.6/api/architecture/note_engine)给出了很生动的解释。 首先Mxnet定义了VarHandle(Engine/Var)表示变量，OprHandle(Engine/Opr)表示操作。那么依赖关系就是以Opr为点，Var为边。在实际执行的时候，OprBlock会对Opr进行封装，作为基本的执行单元。VersionedVarBlock维护VarHandle的版本信息，给同一个VarHandle的不同优先级（依赖关系作为最高优先级）的OprBlock建立一个[队列](https://mxnet.apache.org/versions/1.6/api/cpp/docs/api/classdmlc_1_1ConcurrentBlockingQueue.html)。对应的关系对象如如下：
+
+```mermaid
+classDiagram
+      Opr <|-- ThreadedOpr
+      ThreadedOpr <|-- OprBlock
+      OprBlock <|-- VersionedVarBlock
+      
+      class ThreadedOpr{
+          + Engine::AsyncFn fn; 
+          + std::vector<ThreadedVar*> const_vars;
+          + std::vector<ThreadedVar*> mutable_vars;
+          + FnProperty prop;
+          + std::string opr_name;
+      }
+      class OprBlock{
+          +std::atomic<int> wait
+          +ThreadedOpr      *opr
+          +Context          ctx
+          -inline int decr_wait()
+      }
+      class VersionedVarBlock{
+          +VersionedVarBlock *next
+          +OprBlock          *triger
+          +bool              write
+      }
+      
+     Var <|-- ThreadedVar
+     ThreadedOpr *--  ThreadedVar
+     class ThreadedVar {
+     		+ std::mutex mutex_
+     		+ int num_pending_reads_    
+     		+ VersionedVarBlock *head_
+     		+ VersionedVarBlock *pending_write_
+     		- inline void AppendReadDependency(OprBlock* opr_block)
+				- inline void AppendWriteDependency(OprBlock* opr_block)
+  			- inline void CompleteReadDependency(Dispatcher dispatcher)
+  			- inline bool CompleteWriteDependency(Dispatcher dispatcher) 
+     }
+```
+
+​	其中最关键的部分是ThreadedVar，成员变量解释如下：
+
+> * num_pending_reads\_ : 当前Var被读依赖的次数；
+> * pending_write\_: 当前被写依赖的的Var， 并且执行该Var所维护的依赖操作队列的头部；_
+> * head\_： 队列尾部;
+
+​	其次是OprBlock，成员，会有一个wait成员，标记当前Var的依赖操作的个数，如果为0，那么就可以执行当前节点的操作`PushToExecute`。
+
+​	实际处理变量的Push的时候，对于只读变量(const_vars),  在`ThreadedVar::AppendReadDependency`中如果发现该变量队列中没有等待写入的操作(`pending_write_ == nullptr`)， 那么增加`num_pending_reads_`, 并且减少wait，表示当前读依赖就绪。否则将当前const_var转换成VersionedVarBlock， 并且插入到其关联的队列后面。对于写入，直接在当前变量对应的队列的尾部(head\_)插入新的VersionedVarBlock, 如果此时发现`num_pending_reads_ == 0`,  也就是所有的读依赖都完成了, 减少wait，表示当前写依赖就绪。
+
+​	当一个实际的读操作完成的时候，就会触发`CompleteReadDependency`方法，减少`num_pending_reads_`, 并且判断`num_pending_reads_ == 0 && pending_write_ != nullptr`的时候，触发该`pending_write_`执行。 
+
+​	写操作完成的时候，就会相应触发`CompleteWriteDependency`，首先要递增该Var的**版本**，然后找到后继的读依赖，一一触发，直到找到一个新的写依赖，并且触发该操作。
+
+​	示意图如下：
+
+<img src="https://raw.githubusercontent.com/dmlc/web-data/master/mxnet/engine/dep_queue.gif" alt="Dependency Queue" style="zoom:50%;" >
+
+​	Mxnet::Engine具体提供了3个操作建立DAG：
+
+ * Engine::Push
+
+   ```
+   	virtual void Push(OprHandle op, Context exec_ctx, int priority = 0, bool profiling = false) = 0;
+   ```
+
+   ​	作为最后实际执行op的地方。
+
+ * Engine::PushAsync
+
+   ```
+     virtual void PushAsync(AsyncFn exec_fun, Context exec_ctx,
+                            std::vector<VarHandle> const& const_vars,
+                            std::vector<VarHandle> const& mutable_vars,
+                            FnProperty prop = FnProperty::kNormal,
+                            int priority = 0,
+                            const char* opr_name = nullptr,
+                            bool wait = false) = 0;
+   ```
+
+   ​	构建OprBlock,  更新const_vars（只读）和mutable_vars（可写）的VersionedVarBlock维护的队列；
+
+* Engine::PushSync
+
+  ```
+    virtual void PushSync(SyncFn exec_fn, Context exec_ctx,
+                          std::vector<VarHandle> const& const_vars,
+                          std::vector<VarHandle> const& mutable_vars,
+                          FnProperty prop = FnProperty::kNormal,
+                          int priority = 0,
+                          const char* opr_name = nullptr) {
+  
+  ```
+
+  ​	调用PushAsync, 但是wait=true.
+
+Mxnet提供了多种执行引擎，不同的执行引擎因为功能不一样，实现的Engine的接口的功能也不一样：
+
+* NativeEngine: 其实是个同步执行引擎。
+* CreateThreadedEnginePooled：多设备共享的多线程池执行引擎; 
+* CreateThreadedEnginePerDevice： 设备独立的多线程池执行引擎；
 
 ### NDArray
 
