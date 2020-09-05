@@ -69,9 +69,9 @@
 
 ​	Mxnet在构建数据流通的时候，还要充分考虑内存的复用，因此，mxnet增加了一个特殊的节点: `Object::__del__`节点。当当前对象Object不在被使用的时候，就会自动插入这个del节点，对齐独占的内存进行释放。另外就是对于随机数分配，考虑到随机数分配器是线程不安全的，因此要串行化分配随机数资源。
 
-​	有了以上约束，我们就可以开始构建依赖关系。按照正常的思路，基于数据流的依赖关系，可以借助[MVCC](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)的思路，引入版本控制，对于**写**产生新的版本且标记其引用的版本，对于**读**标记其引用的版本。然后基于这些依赖关系，构建出一个**DAG**。然后对DAG进行拓扑排序，然后通过遍历叶子节点找出所有不同的根节点（逆拓扑遍历），找出**独立子图**。  独立子图之间是可以交给多个线程独立计算。**但是**, 对于机器学习任务，要支持动态计算图的话，就不能这么简单的计算全局的独立子图了。于是乎，。。。。
+​	有了以上约束，我们就可以开始构建依赖关系。按照正常的思路，基于数据流的依赖关系，可以借助[MVCC](https://en.wikipedia.org/wiki/Multiversion_concurrency_control)的思路，引入版本控制，对于**写**产生新的版本且标记其引用的版本，对于**读**标记其引用的版本。然后基于这些依赖关系，构建出一个**DAG**。然后对DAG进行拓扑排序，然后通过遍历叶子节点找出所有不同的根节点（逆拓扑遍历），找出**独立子图**。  独立子图之间是可以交给多个线程独立计算。**但是**, 对于机器学习任务，要支持动态计算图的话，就不能这么简单的计算全局的独立子图了。于是乎，那就mxnet就采用单线程，按照正常的拓扑序列进行计算。后面再符号执行那一块再给出优化方法。
 
-​	以上就是依赖引擎的基本原理，[官网](https://mxnet.apache.org/versions/1.6/api/architecture/note_engine)给出了很生动的解释。 首先Mxnet定义了VarHandle(Engine/Var)表示变量，OprHandle(Engine/Opr)表示操作。那么依赖关系就是以Opr为点，Var为边。在实际执行的时候，OprBlock会对Opr进行封装，作为基本的执行单元。VersionedVarBlock维护VarHandle的版本信息，给同一个VarHandle的不同优先级（依赖关系作为最高优先级）的OprBlock建立一个[队列](https://mxnet.apache.org/versions/1.6/api/cpp/docs/api/classdmlc_1_1ConcurrentBlockingQueue.html)。对应的关系对象如如下：
+​	针对依赖引擎的基本原理，[官网](https://mxnet.apache.org/versions/1.6/api/architecture/note_engine)给出了很生动的解释。 首先Mxnet定义了VarHandle(Engine/Var)表示变量，OprHandle(Engine/Opr)表示操作。那么依赖关系就是以Opr为点，Var为边。在实际执行的时候，OprBlock会对Opr进行封装，作为基本的执行单元。VersionedVarBlock维护VarHandle的版本信息，给同一个VarHandle的不同优先级（依赖关系作为最高优先级）的OprBlock建立一个[队列](https://mxnet.apache.org/versions/1.6/api/cpp/docs/api/classdmlc_1_1ConcurrentBlockingQueue.html)。对应的关系对象如如下：
 
 ```mermaid
 classDiagram
@@ -130,6 +130,8 @@ classDiagram
 
 <img src="https://raw.githubusercontent.com/dmlc/web-data/master/mxnet/engine/dep_queue.gif" alt="Dependency Queue" style="zoom:50%;" >
 
+<center>[点击](https://raw.githubusercontent.com/dmlc/web-data/master/mxnet/engine/dep_queue.gif)查看gif</center>
+
 ​	Mxnet::Engine具体提供了3个操作建立DAG：
 
  * Engine::Push
@@ -176,19 +178,39 @@ Mxnet提供了多种执行引擎，不同的执行引擎因为功能不一样，
 
 ### NDArray
 
-​	
+​	TODO.....
 
-### NNVM
+​	介绍NDArrary之前，先了解[numpy.ndarray](https://numpy.org/doc/stable/reference/arrays.ndarray.html)。numpy.ndarray 由一段内存连续的类型一样（dtype）的一位数组组成(data字段)， 由一个元祖(shape)表示各个维度的大小， 通过步幅(stride tuple)表示遍历该ndarry的时候各个维度上的跨度。
 
-### Runtime Dependency Engine
+​	Mxnet的NDArray虽然在用法上跟numpy.ndarray很类似，但是有一些[不同点](https://mxnet.incubator.apache.org/versions/1.6/api/python/docs/api/ndarray/index.html)。最主要是对GPU的支持。NDArray依赖于mshadowd完成张量运算（Forward）, 以及梯度运算（Backward）。
 
-
-
-### 运算库[mshadow](https://github.com/dmlc/mshadow/tree/master/guide)
+#### 运算库[mshadow](https://github.com/dmlc/mshadow/tree/master/guide)
 
 * 延迟计算： 在“=”操作符上执行真正的计算。默认将计算定向到MKL或者BLAS
 * 复合模板和递归计算： 通过模板(Unary/Binary)表达式支持多种类型(scalar/vector/matrix等tensor)的运算。TBlob是一种shape可动态改变的数据结构。
 * 支持在异构硬件(xpu)上计算/随机数生成等
+
+### KVStore
+
+
+
+### IO
+
+
+
+### Symbolic Execution
+
+​	实现计算图执行和优化。按照现代编译器的优化方式，所有的变量、算子都首先要转换为IR，然后在IR的基础上执行优化，最后转换成架构相关的代码。
+
+#### NNVM
+
+#### IR
+
+​	IR作为中间代码，
+
+#### 
+
+
 
 ## 其他基础库
 
