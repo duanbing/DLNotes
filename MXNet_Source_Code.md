@@ -178,8 +178,6 @@ Mxnet提供了多种执行引擎，不同的执行引擎因为功能不一样，
 
 ### NDArray
 
-​	TODO.....
-
 ​	介绍NDArrary之前，先了解[numpy.ndarray](https://numpy.org/doc/stable/reference/arrays.ndarray.html)。numpy.ndarray 由一段内存连续的类型一样（dtype）的一位数组组成(data字段)， 由一个元祖(shape)表示各个维度的大小， 通过步幅(stride tuple)表示遍历该ndarry的时候各个维度上的跨度。
 
 ​	Mxnet的NDArray虽然在用法上跟numpy.ndarray很类似，但是有一些[不同点](https://mxnet.incubator.apache.org/versions/1.6/api/python/docs/api/ndarray/index.html)。最主要是对GPU的支持。NDArray依赖于mshadowd完成张量运算（Forward）, 以及梯度运算（Backward）。
@@ -190,13 +188,19 @@ Mxnet提供了多种执行引擎，不同的执行引擎因为功能不一样，
 * 复合模板和递归计算： 通过模板(Unary/Binary)表达式支持多种类型(scalar/vector/matrix等tensor)的运算。TBlob是一种shape可动态改变的数据结构。
 * 支持在异构硬件(xpu)上计算/随机数生成等
 
+
+
+#### NDArray与符号表达式
+
+#### 
+
 ### KVStore
 
-
+​	MXNet提供一个分布式的key-value存储来进行数据交换。它主要有两个函数， 1. push： 将key-value对从一个设备push进存储 2. pull：将某个key上的值从存储中pull出来此外，KVStore还接受自定义的更新函数来控制收到的值如何写入到存储中。最后KVStore提供数种包含最终一致性模型和顺序一致性模型在内的数据一致性模型。
 
 ### IO
 
-
+​	
 
 ### Symbolic Execution
 
