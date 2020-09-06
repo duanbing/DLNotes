@@ -185,34 +185,177 @@ Mxnet提供了多种执行引擎，不同的执行引擎因为功能不一样，
 #### 运算库[mshadow](https://github.com/dmlc/mshadow/tree/master/guide)
 
 * 延迟计算： 在“=”操作符上执行真正的计算。默认将计算定向到MKL或者BLAS
-* 复合模板和递归计算： 通过模板(Unary/Binary)表达式支持多种类型(scalar/vector/matrix等tensor)的运算。TBlob是一种shape可动态改变的数据结构。
+* 复合模板和递归计算[3]： 通过模板(Unary/Binary)表达式支持多种类型(scalar/vector/matrix等tensor)的运算。TBlob是一种shape可动态改变的数据结构。
 * 支持在异构硬件(xpu)上计算/随机数生成等
-
-
-
-#### NDArray与符号表达式
-
-#### 
 
 ### KVStore
 
 ​	MXNet提供一个分布式的key-value存储来进行数据交换。它主要有两个函数， 1. push： 将key-value对从一个设备push进存储 2. pull：将某个key上的值从存储中pull出来此外，KVStore还接受自定义的更新函数来控制收到的值如何写入到存储中。最后KVStore提供数种包含最终一致性模型和顺序一致性模型在内的数据一致性模型。
 
-### IO
+### IO[4]
 
-​	
+​	数据读取在整体系统性能上占重要地位。MXNet提供工具能将任意大小的样本压缩打包成单个或者数个文件来加速顺序和随机读取。通常数据存在本地磁盘或者远端的分布式文件系统上（例如HDFS或者Amazon S3)，每次我们只需要将当前需要的数据读进内存。MXNet提供迭代器可以按块读取不同格式的文件。迭代器使用多线程来解码数据，并使用多线程预读取来隐藏文件读取的开销
 
 ### Symbolic Execution
 
-​	实现计算图执行和优化。按照现代编译器的优化方式，所有的变量、算子都首先要转换为IR，然后在IR的基础上执行优化，最后转换成架构相关的代码。
+#### 计算图
 
-#### NNVM
+​	在[深度学习基础](./Deep_Learning_Basics.pdf)这一节介绍了自动求导的基本原理。在[symbol_in_pictures](https://mxnet.apache.org/versions/1.6/api/scala/docs/tutorials/symbol_in_pictures.html)生动的描述了通过符号式语言计算梯度的过程。在[编程模型对比](https://mxnet.apache.org/versions/1.0.0/architecture/program_model.html#symbolic-vs-imperative-programs)分析了符号式语言相对命令式语言在深度学习的优势。
 
-#### IR
+​	从一个例子出发进行介绍：
 
-​	IR作为中间代码，
+```
+		A = Variable('A')
+    B = Variable('B')
+    C = B * A
+    D = C + Constant(1)
+    # get gradient node.
+    gA, gB = D.grad(wrt=[A, B])
+    # compiles the gradient function.
+    f = compile([gA, gB])
+    grad_a, grad_b = f(A=np.ones(10), B=np.ones(10)*2)
+```
 
-#### 
+   最终生成的计算图如下：
+
+<img src="https://raw.githubusercontent.com/dmlc/web-data/master/mxnet/prog_model/comp_graph_backward.png" alt="Comp Graph Folded" style="zoom:80%;" />
+
+​	箭头左边是命令式模型生成的计算图，右边是基于符号计算生成的计算图，同时生成了自动求导计算数据流图。
+
+​	首先看图的定义：	
+
+```mermaid
+classDiagram
+	Graph *--> NodeEntry
+	nnvmNode *--> NodeEntry
+	Graph *--> IndexedGraph
+	IndexedGraph *--> NodeEntry
+	Symbol *--> NodeEntry
+	Node *--> nnvmNode
+	Node *--> NodeEntry
+	
+	class nnvmNode{ //nnvm::Node
+		  + NodeAttrs attrs;
+		  + std::vector<NodeEntry> inputs;
+		  + std::vector<ObjectPtr> control_deps;
+		  + any info;
+	}
+	
+	class Symbol {
+	  + std::vector<NodeEntry> outputs
+	}
+	class NodeEntry {
+		+ uint32_t node_id
+    + uint32_t index
+    + uint32_t version
+	}
+	class Node {
+    const nnvm::Node* source;
+    array_view<NodeEntry> inputs;
+    array_view<uint32_t> control_deps;
+    std::weak_ptr<nnvm::Node> weak_ref;
+  }
+
+	class IndexedGraph {
+	std::vector<Node> nodes_;
+  // Index to all input nodes.
+  std::vector<uint32_t> input_nodes_;
+  // Index to all mutable input nodes.
+  std::unordered_set<uint32_t> mutable_input_nodes_;
+  // space to store the outputs entries
+  std::vector<NodeEntry> outputs_;
+  // mapping from node to index.
+  std::unordered_map<const nnvm::Node*, uint32_t> node2index_;
+  // CSR pointer of node entries
+  std::vector<size_t> entry_rptr_;
+  // space to store input entries of each
+  std::vector<NodeEntry> input_entries_;
+  // control flow dependencies
+  std::vector<uint32_t> control_deps_;
+	}
+	
+	class Graph {
+		+ std::vector<NodeEntry> outputs
+		+   std::unordered_map<std::string, std::shared_ptr<any> > attrs
+		+ mutable std::shared_ptr<const IndexedGraph> indexed_graph_
+ 	  - const IndexedGraph& indexed_graph()
+ 	  - inline const T& GetAttr(const std::string& attr_name)  
+	} 	
+```
+
+​		对于上图中的input表示当前符号的父节点，output表示当前符号产生的子节点。
+
+​		那么前面例子的步骤详细解释如下：
+
+  1. 创建符号` mx.sym.Variable('data', attr={'a': 'b'})`, 传入符号名称和属性dict， 会调用`MXSymbolCreateVariable`，最终调用tvm的`CreateVariableNode`函数，创建一个Symbol, 同时创建一个op为空的nnvm::Node， 将其加入到Symbol的outputs里面去。 这样创建A和B; 
+
+  2. 执行`C = A * B, D = C + Constant(1)`, 创建2个新的符号C和D:   
+
+     ```
+     In [109]: C.get_internals()
+     Out[109]: <Symbol group [a, b, _mul3]>
+     
+     In [110]: D = C + 1
+     In [111]: D.get_internals() ## DFS遍历子节点
+     Out[111]: <Symbol group [a, b, _mul3, _plusscalar1]>
+     ```
+
+  3. 执行bind，创建CachedOp；
+
+     ```
+     ex = c.bind(ctx=mx.cpu(), args={'A' : mx.nd.ones([2,3]),
+              'B' : mx.nd.ones([2,3])})
+     ```
+
+  4. （可选）前向计算符号结果:
+
+     ```
+     from . import autograd
+     default_ctx = None if self._input_names else self._ctx
+     with autograd.record(train_mode=is_train):
+           self.outputs = self._cached_op(*self._args,
+                          default_ctx=default_ctx)
+     ```
+
+     CachedOp() 最终调用Forward方法，然后根据条件调用DynamicForward或者StaticForward。 以DynamicForward为例，输入为args, 输出计算结果， 当前符号信息已经存储在Runtime上下文，具体步骤如下：
+
+     ```
+     OpStatePtr CachedOp::DynamicForward(
+         const Context& default_ctx,
+         const std::vector<NDArray*>& inputs,
+         const std::vector<NDArray*>& outputs,
+         bool use_naive_run) {
+       using namespace nnvm;
+       using namespace imperative;
+     
+       // Initialize
+       bool recording = Imperative::Get()->is_recording();
+       auto op_state = OpStatePtr::Create<DynamicRuntime>();    //创建DynamicRuntime实例， OpStatePtr维护Runtime和一个Var；
+       auto& runtime = op_state.get_state<DynamicRuntime>();    // 获得创建的DynamicRuntime实例
+       {
+         auto state_ptr = GetCachedOpState(default_ctx);
+         auto& state = state_ptr.get_state<CachedOpState>();
+         std::lock_guard<std::mutex> lock(state.mutex);
+         SetForwardGraph(default_ctx, &state.info, recording, inputs);
+         runtime.info.fwd_graph = state.info.fwd_graph;
+         runtime.info.input_map = state.info.input_map;
+       }  // 这一段构建前向图；也就是GraphInfo->fwd_graph. 并且完成type和shape推导， 然后完成计划内存分配。 后面详细解释。
+       nnvm::Graph& g = runtime.info.fwd_graph;
+     
+     
+     ```
+
+     
+
+		5. 生成梯度计算节点:
+
+#### 优化
+
+##### 内存优化[6]
+
+##### Operator Fusion
+
+
 
 
 
@@ -230,4 +373,8 @@ https://dmlc-core.readthedocs.io/en/latest/parameter.html
 
 1. https://lwn.net/Articles/600502/
 2. https://blog.csdn.net/chenxiuli0810/article/details/90899014
+3. https://github.com/dmlc/mshadow/blob/master/guide/exp-template/README.md
+4. https://mxnet.apache.org/versions/1.0.0/architecture/note_data_loading.html
+5. https://mxnet.apache.org/versions/1.0.0/architecture/program_model.html
+6. https://mxnet.apache.org/versions/1.0.0/architecture/note_memory.html
 
