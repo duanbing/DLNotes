@@ -300,7 +300,7 @@ classDiagram
      Out[111]: <Symbol group [a, b, _mul3, _plusscalar1]>
      ```
 
-  3. 执行bind，创建CachedOp；
+  3. 执行bind，创建CachedOp, 会调用`CreateFullGraph`构建完整的计算图, 返回前向、梯度以及全计算图；
 
      ```
      ex = c.bind(ctx=mx.cpu(), args={'A' : mx.nd.ones([2,3]),
@@ -317,7 +317,7 @@ classDiagram
                           default_ctx=default_ctx)
      ```
 
-     CachedOp() 最终调用Forward方法，然后根据条件调用DynamicForward或者StaticForward。 以DynamicForward为例，输入为args, 输出计算结果， 当前符号信息已经存储在Runtime上下文，具体步骤如下：
+     CachedOp() 最终调用Forward方法，然后根据条件调用DynamicForward或者StaticForward(区别见后面解释)。 以DynamicForward为例，输入为args, 输出计算结果， 当前符号信息已经存储在Runtime上下文，具体步骤如下：
 
      ```
      OpStatePtr CachedOp::DynamicForward(
@@ -325,33 +325,42 @@ classDiagram
          const std::vector<NDArray*>& inputs,
          const std::vector<NDArray*>& outputs,
          bool use_naive_run) {
-       using namespace nnvm;
-       using namespace imperative;
-     
+     	...
        // Initialize
        bool recording = Imperative::Get()->is_recording();
        auto op_state = OpStatePtr::Create<DynamicRuntime>();    //创建DynamicRuntime实例， OpStatePtr维护Runtime和一个Var；
        auto& runtime = op_state.get_state<DynamicRuntime>();    // 获得创建的DynamicRuntime实例
-       {
-         auto state_ptr = GetCachedOpState(default_ctx);
-         auto& state = state_ptr.get_state<CachedOpState>();
-         std::lock_guard<std::mutex> lock(state.mutex);
-         SetForwardGraph(default_ctx, &state.info, recording, inputs);
-         runtime.info.fwd_graph = state.info.fwd_graph;
-         runtime.info.input_map = state.info.input_map;
-       }  // 这一段构建前向图；也就是GraphInfo->fwd_graph. 并且完成type和shape推导， 然后完成计划内存分配。 后面详细解释。
+      
+       SetForwardGraph(default_ctx, &state.info, recording, inputs); // 这一段构建前向图；也就是GraphInfo->fwd_graph. 并且完成type和shape推导， 然后通过Pass完成PlanMemory计划生成。 后面详细解释。
        nnvm::Graph& g = runtime.info.fwd_graph;
-     
-     
+     	...
+     	// !use_native_run
+     	CreateGraphNDs(g, default_ctx, mem_plan, &array_reqs, &arrays);  //按照计划分配内存，创建output所需要的ndarry
+       RunGraph(false, idx, arrays, 0, idx.num_nodes(), std::move(array_reqs),
+                std::move(ref_count), &states, dispatch_modes,
+                recording && inlining_, nullptr, monitor_callback_, monitor_all_); //按照indexed_graph里面的节点组装调用Execute::PushAsync提交执行。将结果写入到output。
+       ...
      ```
 
-     
+		5. 生成梯度计算节点.  相对于前向计算，后向计算的时候会把grad_graph.outputs加入到当前graph的outputs。然后在进入bwd_graph、type/shape推导等步骤。
 
-		5. 生成梯度计算节点:
+
+
+##### 构建前向计算图
+
+​	
+
+##### 构建后向计算图
+
+##### 内存分配
+
+
 
 #### 优化
 
 ##### 内存优化[6]
+
+​	内存分配跟编译器的寄存器分配问题很类似。寄存器分配典型的算法包括线性扫描[7, 8], 图着色
 
 ##### Operator Fusion
 
@@ -377,4 +386,6 @@ https://dmlc-core.readthedocs.io/en/latest/parameter.html
 4. https://mxnet.apache.org/versions/1.0.0/architecture/note_data_loading.html
 5. https://mxnet.apache.org/versions/1.0.0/architecture/program_model.html
 6. https://mxnet.apache.org/versions/1.0.0/architecture/note_memory.html
+7. http://web.cs.ucla.edu/~palsberg/course/cs132/linearscan.pdf
+8. https://www.zhihu.com/question/29355187/answer/99413526
 
