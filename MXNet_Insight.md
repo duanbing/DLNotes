@@ -218,7 +218,7 @@ Mxnet提供了多种执行引擎，不同的执行引擎因为功能不一样，
 
    最终生成的计算图如下：
 
-<img src="https://raw.githubusercontent.com/dmlc/web-data/master/mxnet/prog_model/comp_graph_backward.png" alt="Comp Graph Folded" style="zoom:80%;" />
+<img src="./chapter2/comp_graph_backward.png" alt="Comp Graph Folded" style="zoom:80%;" />
 
 ​	箭头左边是命令式模型生成的计算图，右边是基于符号计算生成的计算图，同时生成了自动求导计算数据流图。
 
@@ -283,7 +283,7 @@ classDiagram
 	} 	
 ```
 
-​		对于上图中的input表示当前符号的父节点，output表示当前符号产生的子节点。
+​		对于上图中的input表示当前符号的父节点，output表示当前符号产生的子节点。IndexedGraph包含图的完整信息, nodes_ 包含所有的节点，在vector中的下标就是节点的编号。inputs_nodes_表示当前图依赖的只读的variable节点(没有op), 也就是x，也就是bind函数传入的参数进行绑定的符号对应的节点。input_entries\_/control_deps\_维护当前节点的所有父节点信息，input_entries\_实际上是记录了节点的入边的信息，outputs\_记录了每个节点的出边的信息。mutable_input_nodes\_记录当前图依赖的数据流可变的节点, $ f=f(x)$。
 
 ​		那么前面例子的步骤详细解释如下：
 
@@ -300,7 +300,7 @@ classDiagram
      Out[111]: <Symbol group [a, b, _mul3, _plusscalar1]>
      ```
 
-  3. 执行bind，创建CachedOp, 会调用`CreateFullGraph`构建完整的计算图, 返回前向、梯度以及全计算图；
+  3. 执行bind，会调用`MXCreateCachedOp`创建CachedOp, 然后调用`CreateFullGraph`构建完整的计算图, 返回前向计算图、后向计算图以及全计算图；
 
      ```
      ex = c.bind(ctx=mx.cpu(), args={'A' : mx.nd.ones([2,3]),
@@ -331,6 +331,8 @@ classDiagram
        auto op_state = OpStatePtr::Create<DynamicRuntime>();    //创建DynamicRuntime实例， OpStatePtr维护Runtime和一个Var；
        auto& runtime = op_state.get_state<DynamicRuntime>();    // 获得创建的DynamicRuntime实例
       
+       auto state_ptr = GetCachedOpState(default_ctx); //
+       auto& state = state_ptr.get_state<CachedOpState>();
        SetForwardGraph(default_ctx, &state.info, recording, inputs); // 这一段构建前向图；也就是GraphInfo->fwd_graph. 并且完成type和shape推导， 然后通过Pass完成PlanMemory计划生成。 后面详细解释。
        nnvm::Graph& g = runtime.info.fwd_graph;
      	...
@@ -339,18 +341,65 @@ classDiagram
        RunGraph(false, idx, arrays, 0, idx.num_nodes(), std::move(array_reqs),
                 std::move(ref_count), &states, dispatch_modes,
                 recording && inlining_, nullptr, monitor_callback_, monitor_all_); //按照indexed_graph里面的节点组装调用Execute::PushAsync提交执行。将结果写入到output。
-       ...
-     ```
+  ...
+	```
+	
 
-		5. 生成梯度计算节点.  相对于前向计算，后向计算的时候会把grad_graph.outputs加入到当前graph的outputs。然后在进入bwd_graph、type/shape推导等步骤。
-
-
+5. 生成梯度计算节点.  相对于前向计算，后向计算的时候会把grad_graph.outputs加入到当前graph的outputs。然后在进入bwd_graph、type/shape推导等步骤。
 
 ##### 构建前向计算图
 
-​	
+​	前向构图实际上就是顺序遍历当前符号的outputs列表（例如前面`D.get_internals() `获得Symbol group，实际上是符号树后序遍历的结果）： 
+
+1. 如果当前节点第一次遍历，直接将当前节点插入到前向图的outputs列表；
+2. 否则，构建一个“copy_node”(`Op::Get("_copy");`) , input为当前节点，然后将其插入到前向图的outputs列表。
+
+"copy node" 存在的前提是前向计算的时候，节点的实际值是immutable的。那么在实际分配内存的时候， “copy node”就可以进行in-place内存分配优化。
 
 ##### 构建后向计算图
+
+​	构建后向图是在前向图的基础上，首先通过后序DFS遍历前向图构造前向图的IndexedGraph。 从output\_里面去除mutable_input_nodes_中的节点，然后调用`pass::MXGradient`。 
+
+**Pass 管理** 
+
+​	tvm使用PassFunctionReg来表示Pass。表示如下：
+
+![Inheritance graph](http://mxnet.incubator.apache.org/versions/1.6/api/cpp/docs/api/structnnvm_1_1PassFunctionReg__inherit__graph.png)
+
+​	然后通过宏`NNVM_REGISTER_PASS`注册Pass:
+
+```
+// register pass
+NNVM_REGISTER_PASS(MXGradient)
+.describe(R"(Return a gradient graph of src.attrs["ys"] wrt src.attrs["xs"])")
+.set_body(Gradient)    //设置Pass入口函数， 参数是一个函数对象Graph Gradient(Graph src)。
+.set_change_graph(true) //表示pass会改变当前图结构
+.depend_graph_attr("grad_ys") 
+.depend_graph_attr("grad_xs")
+.depend_graph_attr("in_arg_shapes")
+.depend_graph_attr("in_arg_dtypes")
+.depend_graph_attr("grad_ys_out_grad");
+```
+
+​	所以最终处理的pass  transformer是`Graph Gradient(Graph src)`。 
+
+**梯度计算**
+
+​	在有了xs/ys以及之后head_grads（头梯度矩阵）之后， 就可以开始生成求导节点了。步骤如下：
+
+	1. 求前向图的拓扑序, 初始化ys为head_grads； 
+ 	2. 通过判断所有的ys节点可以最终到达xs， 也就是可以求导；
+ 	3. 
+
+
+
+**生成full_graph**
+
+​	最后full_graph就是将forward_graph和backward_graph的outputs串联起来。
+
+##### 类型推导
+
+
 
 ##### 内存分配
 
