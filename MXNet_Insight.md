@@ -6,7 +6,7 @@
 
 ## 基本结构
 
-![System Overview](https://raw.githubusercontent.com/dmlc/dmlc.github.io/master/img/mxnet/system/overview.png)
+![System Overview](./chapter2/overview.png)
 
 * Runtime Dependency Engine: Schedules and executes the operations according to their read/write dependency.
 
@@ -128,7 +128,7 @@ classDiagram
 
 ​	示意图如下：
 
-<img src="https://raw.githubusercontent.com/dmlc/web-data/master/mxnet/engine/dep_queue.gif" alt="Dependency Queue" style="zoom:50%;" >
+<img src="./chapter2/dep_queue.gif" alt="Dependency Queue" style="zoom:50%;" >
 
 <center>[点击](https://raw.githubusercontent.com/dmlc/web-data/master/mxnet/engine/dep_queue.gif)查看gif</center>
 
@@ -220,6 +220,8 @@ Mxnet提供了多种执行引擎，不同的执行引擎因为功能不一样，
 
 <img src="./chapter2/comp_graph_backward.png" alt="Comp Graph Folded" style="zoom:80%;" />
 
+​	<center>图1： 计算图示例</center>
+
 ​	箭头左边是命令式模型生成的计算图，右边是基于符号计算生成的计算图，同时生成了自动求导计算数据流图。
 
 ​	首先看图的定义：	
@@ -280,10 +282,10 @@ classDiagram
 		+ mutable std::shared_ptr<const IndexedGraph> indexed_graph_
  	  - const IndexedGraph& indexed_graph()
  	  - inline const T& GetAttr(const std::string& attr_name)  
-	} 	
+	} 		
 ```
 
-​		对于上图中的input表示当前符号的父节点，output表示当前符号产生的子节点。IndexedGraph包含图的完整信息, nodes_ 包含所有的节点，在vector中的下标就是节点的编号。inputs_nodes_表示当前图依赖的只读的variable节点(没有op), 也就是x，也就是bind函数传入的参数进行绑定的符号对应的节点。input_entries\_/control_deps\_维护当前节点的所有父节点信息，input_entries\_实际上是记录了节点的入边的信息，outputs\_记录了每个节点的出边的信息。mutable_input_nodes\_记录当前图依赖的数据流可变的节点, $ f=f(x)$。
+​	对于上图中的input表示当前符号的父节点，output表示当前符号产生的子节点。IndexedGraph包含图的完整信息, nodes_ 包含所有的节点，在vector中的下标就是节点的编号。inputs_nodes_表示当前图依赖的只读的variable节点(没有op), 也就是x，也就是bind函数传入的参数进行绑定的符号对应的节点。input_entries\_/control_deps\_维护当前节点的所有父节点信息，input_entries\_实际上是记录了节点的入边的信息，outputs\_记录了每个节点的出边的信息。mutable_input_nodes\_记录当前图依赖的数据流可变的节点, $ f=f(x)$。
 
 ​		那么前面例子的步骤详细解释如下：
 
@@ -387,9 +389,12 @@ NNVM_REGISTER_PASS(MXGradient)
 
 ​	在有了xs/ys以及之后head_grads（头梯度矩阵）之后， 就可以开始生成求导节点了。步骤如下：
 
-	1. 求前向图的拓扑序, 初始化ys为head_grads； 
- 	2. 通过判断所有的ys节点可以最终到达xs， 也就是可以求导；
- 	3. 
+	1. 通过后序遍历，求前向图的拓扑序, 例如图1左边会生成 A, B, C , 1, D序列.
+ 	2. 初始化ys为head_grads， 通过判断所有的ys节点可以最终到达xs(判断所有的xs是否在第一步的序列里面)，也就是可以求微分；
+ 	3. 根据链式求导法则，构造一个**梯度聚合函数**； 
+ 	4. 按照逆拓扑序遍历每一个因变量ys节点，如果改节点的input是空，例如图1的d(D)节点，然后通过**梯度聚合函数**该节点在各个自变量xs上的梯度和；
+ 	5. 如果当前节点有入边(input)，继续进行后向传播， 参考[自动求导](./Deep_Learning_Basics.pdf)自动求导。如果当前节点的梯度全都是0， 那么创建一个新的
+ 	6. 
 
 
 
