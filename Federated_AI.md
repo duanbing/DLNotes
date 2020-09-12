@@ -133,7 +133,7 @@ MPC是一系列多方安全计算协议的统称。针对无可信第三方的�
 $$
 Given\ (p_1, d_i), ... ,(p_n, d_n) \\ compute\ f(d_1, ..., d_n)
 $$
-比较著名的协议有OT/GC（2方），SPDZ（多方）等。
+比较著名的协议有OT/GC（2方），ABY3[18] (三方)， SPDZ（多方）等。
 
 广泛应用在融合计算、联邦学习、匿名投票等。
 
@@ -221,8 +221,7 @@ Protocol:
 >     \end{align}
 >     $$
 >     
->
->  3. 定义$[[d_i]] = [[u_i^A]] + [[u_i^B - y_i]]$,  可得梯度为：
+>3. 定义$[[d_i]] = [[u_i^A]] + [[u_i^B - y_i]]$,  可得梯度为：
 >     $$
 >     [[ \frac{\partial L}{\partial \Theta_A} ]] = \sum\limits_i[[d_i]]x_i^A + [[\lambda\Theta_A]] \\
 >     [[ \frac{\partial L}{\partial \Theta_B} ]] = \sum\limits_i[[d_i]]x_i^B + [[\lambda\Theta_B]] \\
@@ -254,6 +253,12 @@ Protocol:
 
 
 
+### NN[17, 18]
+
+https://github.com/PaddlePaddle/PaddleFL/blob/master/core/privc3/boolean_tensor_impl.h
+
+​	
+
 ## 参考
 
 1. Peter Kairouz. et.al. Advances and Open Problems in Federated Learning, 2019
@@ -269,7 +274,8 @@ Protocol:
 11. Kolesnikov, Vladimir, et al. "Efficient batched oblivious PRF with applications to private set intersection." *Proceedings of the 2016 ACM SIGSAC Conference on Computer and Communications Security*. 2016.   [讲解1](https://zhuanlan.zhihu.com/p/85422763), [讲解2](https://nbjl.nankai.edu.cn/2020/0420/c12124a269726/page.htm) 
 12. Yang Liu, Yan Kang, Chaoping Xing, Tianjian Chen, Qiang Yang, Fellow, IEEE, A Secure Federated Transfer Learning Framework, 2018
 13. https://github.com/xuperdata/TCOS/blob/master/docs/XuperData-TCOS.md
-
 14. Kewei Cheng .et.al  SecureBoost: A Lossless Federated Learning Framework
 15. https://xianmu.github.io/posts/2018-11-03-private-set-intersection-based-on-rsa-blind-signature.html
 16. http://www.cs.ioc.ee/ewscs/2016/schneider/schneider-slides-lecture2.pdf
+17. ABY   https://thomaschneider.de/papers/DSZ15.pdf
+18. Payman Mohassel and Peter Rindal,  ABY3 : A Mixed Protocol Framework for Machine Learning  

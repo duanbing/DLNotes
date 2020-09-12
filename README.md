@@ -9,3 +9,4 @@ My Deep Learning Notes.
 3. [Distributed Training System](./Distributed_Training_System.pdf)
 4. [Federated Machine Learning](./Federated_AI.pdf)
 5. [MXNet Insight](./MXNet_Insight.pdf)
+6. [Youtube Reco Reading](./youtube-recosys.pdf)
