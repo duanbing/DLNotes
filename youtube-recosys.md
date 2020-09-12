@@ -10,7 +10,7 @@
 
 ### Overview
 
-<img src="./img/arch-overview.png" alt="image-20200910122320547" style="zoom:50%;" />
+<img src="./chapter6/arch-overview.png" alt="image-20200910122320547" style="zoom:50%;" />
 
 ​	2层神经网络，第一层产生候选（粗排），一层用来生成排序（精排）。 
 
@@ -26,7 +26,7 @@ $$
 
 #### 模型架构
 
-<img src="./img/canidate.png" alt="image-20200910135950461" style="zoom:50%;" />
+<img src="./chapter6/canidate.png" alt="image-20200910135950461" style="zoom:50%;" />
 
 ​	模型采用(watch video, search tokens, geographic enbedding, example age, gender, ...) 等多种维度特征进行forward反馈获得user embedding。 对于计算candidate videos，训练阶段试用negtive sampling替换softmax来加速，serving阶段使用softmax来获得video enbedding跟user embedding计算点积，选择topK作为最终推荐的视频。		
 
@@ -42,7 +42,7 @@ $$
 
 #### 模型
 
-<img src="./img/ranking.png" alt="image-20200910143450297" style="zoom:50%;" />
+<img src="./chapter6/ranking.png" alt="image-20200910143450297" style="zoom:50%;" />
 
 ​		可以看到，ranking阶段 training的最后一层是[weighted LR](https://www.cnblogs.com/hellojamest/p/11871108.html), 来体现期望时长在排序中影响(对数几率odds)， serving用的激活函数是exp, 其次是特征工程跟候选阶段不一样。
 
