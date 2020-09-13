@@ -1,8 +1,8 @@
 # DLNotes
 
-My Deep Learning Notes.
+My Deep Learning Notes. Keep updating.
 
-深度学习日记。
+深度学习日记。持续更新。
 
 1. [Python Insight](./Python_Insight.pdf)
 2. [Deep Learning Basics](./Deep_Learning_Basics.pdf)
