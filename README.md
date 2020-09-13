@@ -10,3 +10,7 @@ My Deep Learning Notes. Keep updating.
 4. [Federated Machine Learning](./Federated_AI.pdf)
 5. [MXNet Insight](./MXNet_Insight.pdf)
 6. [Youtube Reco Reading](./youtube-recosys.pdf)
+
+
+# For update
+Edit files with suffix `md` with [Typora](https://typora.io/).
