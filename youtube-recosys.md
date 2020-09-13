@@ -1,6 +1,10 @@
-# Youtube推荐系统论文
+# Google推荐系统论文
 
-​	论文[pje]是工程界关于深度学习推荐系统比较典型的论文。
+[toc]
+
+## Deep Neural Networks for YouTube Recommendations 
+
+​	本文提出了一种典型的推荐系统架构，将召回看做多分类问题， 利用深度学习对用户和视频做enbedding，然后通过计算用户和视频embedding之间的得分，排序阶段再次利用深度学习，结合多种特征进行精排。是工程实现的典范。
 
 ### 目标
 
@@ -60,10 +64,50 @@ $$
 
 5. **#previous impressions**: 该视频已经被曝光给该用户的次数, 上一次推荐后，用户没有点击，那么下一次就应该更换；
 
-   
-
 ​	从这篇论文基本了解了一个典型的基于深度学习的推荐系统架构。
+
+## Wide & Deep Learning for Recommender Systems
+
+​	Google在2016年提出的一个深度学习模型，应用于Google Play应用商店上的APP推荐，该模型经过在线AB测试获得了比较好的效果。
+
+### 目标
+
+​	将推荐系统看做query = user + context的检索系统，输出是物品推荐列表。考虑到当前线性模型(wide model)虽然简单，具备"记忆"能力，但是需要大量的人工特征工作，所以考虑将深度学习(Deep mode)跟线性模型结合，兼顾"记忆"和"泛华"能力。
+
+### 网络模型
+
+<img src="./chapter6/deep-and-wide-overview.png" alt="image-20200913100820543" style="zoom:60%;" />
+
+​	
+
+	#### Wide操作
+
+​	对于$y = W^T x + b$,  $x$ 主要包含2类特征： 1) 原始输入特征； 2） 通过交叉积（cross-product）变换后的特征，变换定义如下：
+$$
+\theta_k(x) = \prod\limits_{i=1}^{d}x_i^{c_{ki}}\ \ \ c_{ki} \in {0, 1}
+$$
+​		也就是当第k次转换所包含的成分特征$x_i$为1的时候（例如二元特征AND (gender = female, language=en), 必须2个条件都满足），交叉积才为1， $\theta_k(x)$为所有成分特征的乘积。
+
+#### Deep操作
+
+​	Deep部分是一个MLP。每个一个隐藏层的转换为： $\alpha^{(l+1)} = f(W_{deep}^{(l)}\alpha^{(l)} + b^{(l)})$, $l$代表层数。f(*)是激活函数， 一般是ReLU。$W, b$是要训练的参数。
+
+#### Wide & Deep联合训练
+
+<img src="./chapter6/wide_and_deep_structure.png" alt="image-20200913151823436" style="zoom:70%;" />
+
+​	如上图，训练过程将数值特征、类别特征等通过embedding处理，构成一个大概约1200维的向量灌入Deep模型，Wide模型则是使用APP安装和APP评分(impression)两类特征通过交叉积变换形成模型需要的特征。最后通过反向传播算法来训练该模型(wide模型采用FTRL优化器，deep模型采用AdaGrad优化器)，并上线到APP推荐业务中做AB测试。
+
+#### Model Serving
+
+​	基于用户特征和候选app信息，在Wide&Deep网络上运行前向计算，在预测部分，例如对于逻辑回归问题，采用如下模型进行计算：
+$$
+P(Y = 1 | x) = \sigma(w_{wide}^T[x, \theta(x)] + w_{deep}^T\alpha^{(l_f)} + b)
+$$
+​	Y是二元分类标签，$\sigma( * )$表示sigmoid函数，$\theta(x)$是原始特征的交叉积，$w_{wide}$是wide模型权重参数。
 
 ## 参考
 
 [PJE] Paul Covington, Jay Adams, Emre Sargin Google,  [Deep Neural Networks for YouTube Recommendations](https://static.googleusercontent.com/media/research.google.com/zh-CN//pubs/archive/45530.pdf) ,  https://zhuanlan.zhihu.com/p/52169807
+
+[HLJ+] Heng-Tze Cheng, Levent Koc, Jeremiah Harmsen, et.al Wide & Deep Learning for Recommender Systems
