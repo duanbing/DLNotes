@@ -161,7 +161,7 @@ $$
 
 #### RSA-based[5,15]
 
-​	这种基于盲签名的方法计算和通信复杂度随着集合大小呈线性增长的。本方案在随机语言模型和半诚实模型下被认为是安全的。
+​	这种基于盲签名的方法计算和通信复杂度随着集合大小呈线性增长的。本方案在随机预言模型和半诚实模型下被认为是安全的。
 
 ​	此协议的核心思路是利用RSA的假设, 基本协议如下：
 
@@ -203,7 +203,7 @@ Protocol:
 
 ### Linear regression[6]
 
-​	存在数据集$\{x_i^A\}_{i \in {D_A}}, \{{x_i^B, y_i}\}_{i \in D_B}$, A和B分别初始化其模型参数$\Theta_A,\Theta_B$, C表示协调者。
+​	存在数据集$\{x_i^A\}_{i \in {D_A}}, \{{x_i^B, y_i}\}_{i \in D_B}$, A和B分别初始化其模型参数$\Theta_A,\Theta_B$, C表示协调者。 属于水平切分场景。
 
 ​	目标函数： $\min\limits_{\Theta_A, \Theta_B} \frac{1}{2}\sum\limits_{i}\left\| \Theta_Ax_i^A + \Theta_Bx_i^B - y_i \right\|^2 + \frac{\lambda}{2}(\left\| \Theta_A||^2 + ||\Theta_B\right\|^2)$， 注意这里对论文[6]中的共识做了勘误，我认为是损失函数应该除2，后面的推导才正确。	
 
@@ -249,15 +249,90 @@ Protocol:
 
 ### SecureBoost[14]
 
-​	TBD.
+​	SecureBoost针对是垂直场景。假设其中一方具有标签(active party), 其他多方具有x(active parties)。在数据垂直切分(特征切分)的场景下，训练一个分类或者回归模型。
 
+* 数据对齐： 参考前面的PSI部分。
 
+* 构造Boost树
 
-### NN[17, 18]
+  <img src="./chapter4/secure-boost-overview.png" alt="image-20200915144145557" style="zoom:67%;" />
+
+  上图就是构造出来最终的全局Boost树。构造要解决的问题：
+
+  1） Passive Party如何在没有标签的情况下，更新本地模型？
+
+  2） Active Party如何聚合所有的本地模型，然后更新全局的模型？
+
+  3） 如何安全在多个Passive Party之间共享全局模型？
+
+  先看**非联邦**的xgboost的训练方式，对于$X \in R^{n \times d}$,  使用$K$回归树，预测函数为: $ \hat y _i = \sum\limits_{k=1}^{K}f_k(x_i)$
+
+  损失函数为：
+  $$
+  L^{(t)} \approx \sum\limits_{i=1}^{n}[l(y_i, \hat y_i^{(t-1)} + f_t(x_i))] + \Omega(f_t)​
+  $$
+  通过二阶泰勒展开: 
+  $$
+  L^{(t)} \approx \sum\limits_{i=1}^{n}[l(y_i, \hat y_i^{(t-1)}) + g_if_t(x_i) + \frac{1}{2}h_i f_t^2(x_i)] + \Omega(f_t)
+  $$
+  $g_i、h_i$ 分别是$l(y_i, \hat y^{(t-1)})$对$\hat y_i^{(t-1)}$的一阶和二阶导数。然后定义$f_t$的基本形式为： $f_t(x) = w_q(x)$, $\Omega$的基本形式是： $\Omega(f_t) = \gamma T + \frac{1}{2} \lambda \sum\limits_{j=1}^{T}w_j^2$.   q是节点序号，例如下图，儿子节点是1， 女儿是2， 爷爷奶奶妈妈是3，相应的节点输出就是$w_1, w_2, w_3$. 
+
+  ![img](./chapter4/cart.png)
+
+  <center>图来自 [19] </center>
+
+  将$f_t$代入到损失函数，以及t轮的时候， $l(y_i, \hat y^{(t-1)})$已知， 作为常数项去掉， 进一步推导[19]：
+  $$
+  L^{(t)} \approx \sum\limits_{i=1}^{n}[l(y_i, \hat y_i^{(t-1)}) + g_if_t(x_i) + \frac{1}{2}h_i f_t^2(x_i)] + \Omega(f_t) \\
+  \approx \sum\limits_{i=1}^{n}[{g_i f_t(x_i) + \frac{1}{2}h_i f_t^2(x_i)] } + \gamma T + \frac{1}{2} \lambda \sum\limits_{j=1}^{T}w_j^2 \\
+   = \sum\limits_{j=1}^{T}[(\sum\limits_{i \in I_j} g_i)\cdot w_j + \frac{1}{2}(\sum\limits_{i \in I_j} h_i + \lambda)w_j^2] + \gamma T,\  I_j = \{i | q (x_i)= j\} \\
+  $$
+  令$\partial {L^{(t)}}/\partial(w_j) = 0$,  得:
+  $$
+  w^* = \frac{\sum\limits_{i \in I_j} g_i}{\sum\limits_{i \in I_j}h_i + \lambda}
+  $$
+  ​	代入损失函数得：
+  $$
+  L^{(t)} = - \frac{1}{2} \sum\limits_{j=1}^T \frac{(\sum\limits_{i \in I_j} g_i)^2}{\sum\limits_{i \in I_j}h_i + \lambda} + \gamma T
+  $$
+  节点气氛之后的损失函数为：
+  $$
+  L_{split} = \frac{1}{2} [\frac{(\sum\limits_{i \in I_L} g_i)^2}{\sum\limits_{i \in I_L} h_i + \lambda} + \frac{(\sum\limits_{i \in I_R} g_i)^2}{\sum\limits_{i \in I_R} h_i + \lambda} - \frac{(\sum\limits_{i \in I} g_i)^2}{\sum\limits_{i \in I} h_i + \lambda}] - \eta
+  $$
+  $\eta$是加入新节点增加的复杂度代价。
+
+  回到联邦部分， 可见通过$g_i、h_i$就可以计算出分裂之后的损失函数。在计算$g_i, h_i$的时候需要标签$y_i^{(t-1)}$， 反过来知道g、h也能推导出标签，因此g和h应该是敏感数据。但是为了计算分裂之后的损失函数，每个参与方基于$\sum\limits_{i \in I_L} [g_i]和\sum\limits_{i \in I_R} [h_i]$( $[\cdot]$表示加密后的结果) 来计算本地各种可能划分的loss。然后反馈给active party，active party然后计算全局的loss。
+
+  ​	但是这样的计算复杂度很高，论文让passive party将features映射到bucket(相当于一种对特征分类别)，然后在bucket的上面按照如下算法计算**加密梯度统计**[19]。
+
+  假设 $S_k = \{s_{k1}, s_{k,2}, ..., s_{k,l}\}$ 是特征k的percentiles， 加密梯度统计计算方式如下如下： 对所有的特征k： 
+  $$
+  G_{kv} = \sum\limits_{i \in \{i | s_{k, v} \ge x_{i, k} \gt s_{k, v-1}\}}<g_i> \\
+  H_{kv} = \sum\limits_{i \in \{i | s_{k, v} \ge x_{i, k} \gt s_{k, v-1}\}}<h_i>
+  $$
+  选择若干个分位点，将连续特征值映射成独立的分桶，实现的时候优先考虑先让每个passive party算好所有的分位数信息。然后根据Split Finding算法进行score计算[14]。Active party核心代码如下：
+  $$
+  g_l = g_l  + D(G_{kv}^i), h_l = h_l  + D(H_{kv}^i) \\
+  g_r = g - g_l,  h_r = h - g_l \\
+  score = max(score, \frac{g_l^2}{h_l + \lambda} + \frac{g_r^2}{h_r + \lambda} - \frac{g^2}{h + \lambda} )
+  $$
+  ​	获得得分最大的候选k和v之后，传回给对应的passive party， passive party 根据计算的属性的值(g，h),计算分裂的 在本地构建一个loopup table，按照$[record\ id, I_L, threshold]$记录。record id是前面提到的节点的编号，$I_L$是分裂信息。threshold是本地计算的分裂阈值。
+
+  预测流程如下图，直接根据局部的lookup表和节点编号信息，计算样本的标签信息。
+
+<img src="./chapter4/secure-boost-prediction.png" alt="image-20200921153757330" style="zoom:80%;" />
+
+​	论文证明这种方案的安全假设是建立在半诚实模型下。
+
+### NN[17, 18, 19]
 
 https://github.com/PaddlePaddle/PaddleFL/blob/master/core/privc3/boolean_tensor_impl.h
 
-​	
+针对NN，利用普通的秘钥共享或者加密电路，需要解决几个特殊的问题：
+
+1. 浮点数乘法： 采用定点数，
+2. 非线性函数计算
+3. 
 
 ## 参考
 
@@ -279,3 +354,5 @@ https://github.com/PaddlePaddle/PaddleFL/blob/master/core/privc3/boolean_tensor_
 16. http://www.cs.ioc.ee/ewscs/2016/schneider/schneider-slides-lecture2.pdf
 17. ABY   https://thomaschneider.de/papers/DSZ15.pdf
 18. Payman Mohassel and Peter Rindal,  ABY3 : A Mixed Protocol Framework for Machine Learning  
+19. Sameer Wagh*, Divya Gupta, and Nishanth Chandran,    SecureNN: 3-Party Secure Computation for Neural Network Training
+20. Xgboost: A scalable tree boosting system.
