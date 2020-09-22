@@ -1,8 +1,8 @@
 # DLNotes
 
-My Deep Learning Notes.
+My Deep Learning Notes. Keep updating.
 
-深度学习日记。
+深度学习日记。持续更新。
 
 1. [Python Insight](./Python_Insight.pdf)
 2. [Deep Learning Basics](./Deep_Learning_Basics.pdf)
@@ -10,3 +10,7 @@ My Deep Learning Notes.
 4. [Federated Machine Learning](./Federated_AI.pdf)
 5. [MXNet Insight](./MXNet_Insight.pdf)
 6. [Youtube Reco Reading](./youtube-recosys.pdf)
+
+
+# For update
+Edit files with suffix `md` with [Typora](https://typora.io/).
