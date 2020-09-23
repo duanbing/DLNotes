@@ -316,7 +316,7 @@ Protocol:
   g_r = g - g_l,  h_r = h - g_l \\
   score = max(score, \frac{g_l^2}{h_l + \lambda} + \frac{g_r^2}{h_r + \lambda} - \frac{g^2}{h + \lambda} )
   $$
-  ​	获得得分最大的候选k和v之后，传回给对应的passive party， passive party 根据计算的属性的值(g，h),计算分裂的在本地构建一个loopup table，按照$[record\ id, I_L, threshold]$记录。record id是前面提到的节点的编号，$I_L$是分裂信息。threshold是本地计算的分裂阈值。
+  ​	获得得分最大的候选k和v之后，传回给对应的passive party， passive party 根据计算的属性的值(g，h),计算分裂的在本地构建一个lookup table，按照$[record\ id, I_L, threshold]$记录。record id是前面提到的节点的编号，$I_L$是分裂信息。threshold是本地计算的分裂阈值。
 
   预测流程如下图，直接根据局部的lookup表和节点编号信息，计算样本的标签信息。
 
