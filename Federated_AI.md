@@ -310,13 +310,13 @@ Protocol:
   G_{kv} = \sum\limits_{i \in \{i | s_{k, v} \ge x_{i, k} \gt s_{k, v-1}\}}<g_i> \\
   H_{kv} = \sum\limits_{i \in \{i | s_{k, v} \ge x_{i, k} \gt s_{k, v-1}\}}<h_i>
   $$
-  选择若干个分位点，将连续特征值映射成独立的分桶，实现的时候优先考虑先让每个passive party算好所有的分位数信息。然后根据Split Finding算法进行score计算[14]。Active party核心代码如下：
+  选择若干个分位点，将连续特征值映射成独立的分桶（按特征值分桶统计），实现的时候优先考虑先让每个passive party算好所有的分位数信息。然后根据Split Finding算法进行score计算[14]。Active party核心代码如下：
   $$
   g_l = g_l  + D(G_{kv}^i), h_l = h_l  + D(H_{kv}^i) \\
   g_r = g - g_l,  h_r = h - g_l \\
   score = max(score, \frac{g_l^2}{h_l + \lambda} + \frac{g_r^2}{h_r + \lambda} - \frac{g^2}{h + \lambda} )
   $$
-  ​	获得得分最大的候选k和v之后，传回给对应的passive party， passive party 根据计算的属性的值(g，h),计算分裂的 在本地构建一个loopup table，按照$[record\ id, I_L, threshold]$记录。record id是前面提到的节点的编号，$I_L$是分裂信息。threshold是本地计算的分裂阈值。
+  ​	获得得分最大的候选k和v之后，传回给对应的passive party， passive party 根据计算的属性的值(g，h),计算分裂的在本地构建一个loopup table，按照$[record\ id, I_L, threshold]$记录。record id是前面提到的节点的编号，$I_L$是分裂信息。threshold是本地计算的分裂阈值。
 
   预测流程如下图，直接根据局部的lookup表和节点编号信息，计算样本的标签信息。
 
