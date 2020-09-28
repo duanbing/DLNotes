@@ -1,5 +1,7 @@
 # Google推荐系统论文
 
+Bing Duan, 2020.9
+
 [toc]
 
 ## Deep Neural Networks for YouTube Recommendations 

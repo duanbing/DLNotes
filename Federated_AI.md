@@ -1,5 +1,7 @@
 # 联邦学习
 
+Bing Duan, 2020.9
+
 [toc]
 
 ## 联邦学习简介
@@ -137,6 +139,33 @@ $$
 
 广泛应用在融合计算、联邦学习、匿名投票等。
 
+* OT
+
+```mermaid
+sequenceDiagram
+Alice ->> OT : m_1, m_2, ... m_k
+Bob ->> OT : i
+OT ->> Bob: m_i
+
+```
+
+​	借助于公私钥体系： 实现的时候，把i换成k个公钥，保证只有一个公钥是有私钥的，并且只有Bob知道。将k个公钥传递到Alice，Alice分别用公钥加密m_k，然后全部传递给Bob，Bob只能解开自己想要的那个数据。
+
+* GC
+
+  假设A生成真值表如下（A有所有wire的秘钥）， A和B计算一个共同的**函数f**。
+
+  | \    | a            | b            |
+  | ---- | ------------ | ------------ |
+  | c    | $E_{a,c}(f)$ | $E_{b,c}(f)$ |
+  | d    | $E_{a,d}(f)$ | $E_{b,d}(f)$ |
+
+  > 1. A将真值表发送B，并且A的输入G(明文是c 或者d, 用g表示)对应的秘钥发送到B；
+  > 2. B通过OT从A获得B的输入E(明文是a或者b，用e表示)对应的秘钥；B有了G和E以及真值表，就能计算获得加密结果；
+  > 3. A把输出秘钥发给B， B解密结果得到f(g, e)。
+
+更多有关OT/GC的协议参考[21].
+
 #### 差分隐私
 
 ​	保留统计学特征的前提下去除个体特征以保护用户隐私。形式化如下：
@@ -148,8 +177,8 @@ $$
 
 总结联邦学习过程中主要有以下技术流派：
 
-1. 半同态流派： 例如微众FATE；
-2. MPC流派： 百度BFC, 阿里摩斯等
+1. 同态流派： 例如微众FATE；
+2. MPC流派： 百度PaddleFL, 阿里摩斯等
 3. TEE流派： 百度mesatee、xuperdata[13]等 
 
 
@@ -275,7 +304,7 @@ Protocol:
   $$
   L^{(t)} \approx \sum\limits_{i=1}^{n}[l(y_i, \hat y_i^{(t-1)}) + g_if_t(x_i) + \frac{1}{2}h_i f_t^2(x_i)] + \Omega(f_t)
   $$
-  $g_i、h_i$ 分别是$l(y_i, \hat y^{(t-1)})$对$\hat y_i^{(t-1)}$的一阶和二阶导数。然后定义$f_t$的基本形式为： $f_t(x) = w_q(x)$, $\Omega$的基本形式是： $\Omega(f_t) = \gamma T + \frac{1}{2} \lambda \sum\limits_{j=1}^{T}w_j^2$.   q是节点序号，例如下图，儿子节点是1， 女儿是2， 爷爷奶奶妈妈是3，相应的节点输出就是$w_1, w_2, w_3$. 
+  $g_i、h_i$ 分别是$l(y_i, \hat y^{(t-1)})$对$\hat y_i^{(t-1)}$的一阶和二阶微分。然后定义$f_t$的基本形式为： $f_t(x) = w_q(x)$, $\Omega$的基本形式是： $\Omega(f_t) = \gamma T + \frac{1}{2} \lambda \sum\limits_{j=1}^{T}w_j^2$.   q是叶子节点序号，例如下图，儿子节点是1， 女儿是2， 爷爷奶奶妈妈是3，相应的节点输出就是$w_1, w_2, w_3$. 
 
   ![img](./chapter4/cart.png)
 
@@ -295,7 +324,7 @@ Protocol:
   $$
   L^{(t)} = - \frac{1}{2} \sum\limits_{j=1}^T \frac{(\sum\limits_{i \in I_j} g_i)^2}{\sum\limits_{i \in I_j}h_i + \lambda} + \gamma T
   $$
-  节点气氛之后的损失函数为：
+  节点切分之后的损失函数为：
   $$
   L_{split} = \frac{1}{2} [\frac{(\sum\limits_{i \in I_L} g_i)^2}{\sum\limits_{i \in I_L} h_i + \lambda} + \frac{(\sum\limits_{i \in I_R} g_i)^2}{\sum\limits_{i \in I_R} h_i + \lambda} - \frac{(\sum\limits_{i \in I} g_i)^2}{\sum\limits_{i \in I} h_i + \lambda}] - \eta
   $$
@@ -305,7 +334,7 @@ Protocol:
 
   ​	但是这样的计算复杂度很高，论文让passive party将features映射到bucket(相当于一种对特征分类别)，然后在bucket的上面按照如下算法计算**加密梯度统计**[19]。
 
-  假设 $S_k = \{s_{k1}, s_{k,2}, ..., s_{k,l}\}$ 是特征k的percentiles， 加密梯度统计计算方式如下如下： 对所有的特征k： 
+  假设 $S_k = \{s_{k1}, s_{k,2}, ..., s_{k,l}\}$ 是特征k的percentiles，特征分桶计算如下： 对所有的特征k： 
   $$
   G_{kv} = \sum\limits_{i \in \{i | s_{k, v} \ge x_{i, k} \gt s_{k, v-1}\}}<g_i> \\
   H_{kv} = \sum\limits_{i \in \{i | s_{k, v} \ge x_{i, k} \gt s_{k, v-1}\}}<h_i>
@@ -316,7 +345,7 @@ Protocol:
   g_r = g - g_l,  h_r = h - g_l \\
   score = max(score, \frac{g_l^2}{h_l + \lambda} + \frac{g_r^2}{h_r + \lambda} - \frac{g^2}{h + \lambda} )
   $$
-  ​	获得得分最大的候选k和v之后，传回给对应的passive party， passive party 根据计算的属性的值(g，h),计算分裂的在本地构建一个lookup table，按照$[record\ id, I_L, threshold]$记录。record id是前面提到的节点的编号，$I_L$是分裂信息。threshold是本地计算的分裂阈值。
+  ​	获得得分最大的候选k和v之后，传回给对应的passive party，寻找最佳分裂点。同时passive party 根据计算的属性的值(g，h), 根据分裂信息的在本地构建一个lookup table，按照$[record\ id, I_L, threshold]$记录。record id是前面提到的节点的编号，$I_L$是分裂信息。threshold是本地计算的分裂阈值。
 
   预测流程如下图，直接根据局部的lookup表和节点编号信息，计算样本的标签信息。
 
@@ -330,9 +359,100 @@ https://github.com/PaddlePaddle/PaddleFL/blob/master/core/privc3/boolean_tensor_
 
 针对NN，利用普通的秘钥共享或者加密电路，需要解决几个特殊的问题：
 
-1. 浮点数乘法： 采用定点数，
+1. 浮点数乘法
 2. 非线性函数计算
-3. 
+
+#### ABY3[18]
+
+​	三方安全计算协议，机器学习隐私计算框架。
+
+* Share type:
+
+   * Arithmetic Circuit:  $[x]^A = x_1 + x_2 + x_3$ 
+   * Boolean Circuit: $[x]^B = x_1 \oplus x_2 \oplus x_3$
+   * Yao's Garble Circuit:  $[x]^Y = LSB(x_1 \oplus x_2)$,  LSB:  Least Significant Bit, 实数的小数部分。相对MSB。
+
+  Boolean Circuit可以很方便的实现比较等逻辑运算，Arithmetic Circuit实现算数运算。 论文还给出了三个电路相互转换的算法。 
+
+* 运算
+
+  * 加法： $z = x + y$，将x,y拆分然后分享给3个计算方，$A(x_1, y_1), B(x_2, y_2), C(x_3, y_3)， x = \sum x_i, y = \sum y_i$
+
+    * $x + y = \sum_{i = 1,2,3} (x_i + y_i)$ 
+
+  * 乘法： $z = x * y$ , 但是 $z_i \ne x_i * y_i$,  观察：
+    $$
+    \begin{align}
+    x * y &= (\sum x_i) * (\sum y_i) \\
+    &=  x_1y_1 + x_1y_2 + x_1y_3  \\
+    &+  x_2y_1 + x_2y_2 + x_2y_3  \\
+    &+  x_3y_1 + x_3y_2 + x_3y_3  \\
+    \end{align}
+    $$
+    那么我们可以如下分配（半乘）, 然后本地计算$z_i$：
+    $$
+    A: x_1, y_1, x_3, y_3   \longrightarrow  z_1 = x_1y_1 + x_1y_3 + x_3y_1 \\
+    B: x_1, y_1, x_2, y_2   \longrightarrow  z_2 = x_1y_2 + x_2y_1 + x_2y_2 \\ 
+    C: x_2, y_2, x_3, y_3   \longrightarrow  z_3 = x_3y_2 + x_2y_3 + x_3y_3 \\
+    $$
+    最后： $z = \sum z_i$。
+
+* Decimal multiplication: 定点乘法 
+
+  <img src="./chapter4/decimal-mul.png" alt="image-20200924025050212" style="zoom:50%;" />
+
+  ​		论文提出，经过大量的这种计算之后，会出现较大的精度问题。论文给出了相应的方案（TODO）。
+
+   - Secret share version: **2-out-of-2 sharing**
+
+     * Preprocess:  $[r] \leftarrow Z_{2^m}, [r^{'}] = [r]/2^l  $,  l是LSB的位数。要计算 $z = xy/2^l$。	
+
+     * 计算：
+
+       > 1. $[z^{'}] = [x] * [y] $
+       > 2. $t = Reveal([z^{'}] - [r])$
+       > 3. $z = t/2^l + [r^{'}]$， + 号两边就是2个share。
+
+* 矩阵乘法: $Z = X^{(n, d)} * Y^{d}$ 
+
+  传统做法：  $z_i = \sum_j x_{ij} y_j$,   n * d 轮交互；
+
+  MPC： 例如对于三方，利用“半乘“进行本地计算，引人矩阵tripple: (A, B, C = AB),   计算:
+  $$
+  \begin{align}
+  Z = XY &= (X - A + A)(Y - B + B) \\
+   	&= (X-A)(Y - B) + (X-A)B + A(Y - B) + A*B \\
+  \end{align}
+  $$
+  然后每个计算节点在本地都能获得 上式的(X-A),  (Y-B)等结果， 通过一轮结果交换(d次通信)，各方就能计算 (X-A)(Y-B)、(X-A)B等。最后计算节点将结果返回给计算发起方，或者最终的结果。
+
+* 分段多项式函数(piecewise polynomial functions)
+
+  通过泰勒展开，将非线性激活函数转换为多项式，然后将多项式转换为分段函数f(x), 每一段是$f_i(x)， c_{i-1} < x < c_i$： 
+  $$
+  f(x) = \sum_{i} b_i f_i (x) \\
+  f_i([x]) = \sum_{j} a_{i,j}[x]^j  \\
+  $$
+  $a_{i,l}$是公开常量。 
+
+  如何计算$[x] - c < 0$？ 只需要计算${[msb(x-c)]^B}$即可，也就是从符号位开始，逐位使用布尔电路做比较即可：
+  $$
+  cmp(x, y) = (x \oplus  y) * x， \\ 
+  a \oplus b = a + b - 2 * a * b
+  $$
+  对于$[x]^l$的计算，只需要全局计算一遍即可。具体来说，logistic函数可以如下表示：
+  $$
+  \begin{equation}
+  f(x)=\left\{
+  \begin{array}{rcl}
+  x & = & 0, & & x < -1/2\\
+  y & = & x+1/2, & & -1/2 \le x < 1/2 \\
+  z & = & 1,& &  1/2 < x
+  \end{array}
+  \right.
+  \end{equation}
+  $$
+  ReLU可以表示为f(x)  = max(0, x),  更多的激活函数的表示在论文[18]的reference里面可以找到。
 
 ## 参考
 
@@ -353,6 +473,7 @@ https://github.com/PaddlePaddle/PaddleFL/blob/master/core/privc3/boolean_tensor_
 15. https://xianmu.github.io/posts/2018-11-03-private-set-intersection-based-on-rsa-blind-signature.html
 16. http://www.cs.ioc.ee/ewscs/2016/schneider/schneider-slides-lecture2.pdf
 17. ABY   https://thomaschneider.de/papers/DSZ15.pdf
-18. Payman Mohassel and Peter Rindal,  ABY3 : A Mixed Protocol Framework for Machine Learning  
+18. Payman Mohassel and Peter Rindal,  ABY3 : A Mixed Protocol Framework for Machine Learning    [video](https://www.youtube.com/watch?v=X8l8XMNyHDM)
 19. Sameer Wagh*, Divya Gupta, and Nishanth Chandran,    SecureNN: 3-Party Secure Computation for Neural Network Training
 20. Xgboost: A scalable tree boosting system.
+21. https://www.di.ens.fr/~nitulesc/files/slides/MPC-intro.pdf
