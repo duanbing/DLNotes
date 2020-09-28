@@ -1,5 +1,7 @@
 # Python Insight
 
+Bing Duan, 2019.8
+
 [toc]
 
 ## Overview

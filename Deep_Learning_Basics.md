@@ -1,4 +1,6 @@
-# Deep Learning Basics
+# Deep Learning Basics
+
+Bing Duan, 2020.8
 
 [toc]
 
@@ -130,8 +132,7 @@ $$
     \end{align}
     $$
     
-
-  * maxsoft
+* maxsoft
     $$
     \begin{align}
     \hat y &= wx + b; \\
@@ -139,7 +140,7 @@ $$
     w, b &= \mathop {argmin}_{w, b} l(w, b)
     \end{align}
     $$
-
+  
 * 预测： $\hat y$
 
 ### 多层感知器
