@@ -330,7 +330,7 @@ Protocol:
   $$
   $\eta$是加入新节点增加的复杂度代价。
 
-  回到联邦部分， 可见通过$g_i、h_i$就可以计算出分裂之后的损失函数。在计算$g_i, h_i$的时候需要标签$y_i^{(t-1)}$， 反过来知道g、h也能推导出标签，因此g和h应该是敏感数据。但是为了计算分裂之后的损失函数，每个参与方基于$\sum\limits_{i \in I_L} [g_i]和\sum\limits_{i \in I_R} [h_i]$( $[\cdot]$表示加密后的结果) 来计算本地各种可能划分的loss。然后反馈给active party，active party然后计算全局的loss。
+  回到联邦部分， 可见通过$g_i、h_i$就可以计算出分裂之后的损失函数。在计算$g_i, h_i$的时候需要标签$y_i^{(t-1)}$， 反过来知道g、h也能推导出标签，因此g和h应该是敏感数据。但是为了计算分裂之后的损失函数，每个参与方基于$\sum\limits_{i \in I_L} [g_i]和\sum\limits_{i \in I_R} [h_i]$( $[\cdot]$表示加密后的结果) 来计算本地各种可能划分的loss和gain。然后反馈给active party，active party然后计算全局的loss和gain。
 
   ​	但是这样的计算复杂度很高，论文让passive party将features映射到bucket(相当于一种对特征分类别)，然后在bucket的上面按照如下算法计算**加密梯度统计**[19]。
 

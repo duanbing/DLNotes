@@ -1,7 +1,6 @@
 # DLNotes
 
 My Deep Learning Notes. Keep updating.
-
 深度学习日记。持续更新。
 
 1. [Python Insight](./Python_Insight.pdf)
@@ -9,7 +8,7 @@ My Deep Learning Notes. Keep updating.
 3. [Distributed Training System](./Distributed_Training_System.pdf)
 4. [Federated Machine Learning](./Federated_AI.pdf)
 5. [MXNet Insight](./MXNet_Insight.pdf)
-6. [Youtube Reco Reading](./youtube-recosys.pdf)
+6. [Papers](./papers.pdf)
 
 
 # For update

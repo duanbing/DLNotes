@@ -1,8 +1,53 @@
-# Google推荐系统论文
+# 论文
 
 Bing Duan, 2020.9
 
 [toc]
+
+# 推荐系统
+
+
+
+**问题描述**
+
+f(user, item, context) ->  item list， f表示推荐算法
+
+**推荐算法演进**
+
+- 协同过滤： 可解释性强
+
+  相似度计算： 
+
+  	* $sim(i, j) = cos(i, j) = \frac{i \cdot j}{\| i\|\cdot\|j\|}$
+  	* [皮尔逊相关系数]([https://zh.wikipedia.org/wiki/%E7%9A%AE%E5%B0%94%E9%80%8A%E7%A7%AF%E7%9F%A9%E7%9B%B8%E5%85%B3%E7%B3%BB%E6%95%B0](https://zh.wikipedia.org/wiki/皮尔逊积矩相关系数))corr(X, Y)
+
+- 矩阵分解： 增强泛化
+  $$
+  R = UV, U = [p_1,..., p_n]^T, V = [q_1,...q_k] \\
+  \hat r_{ui} = q_i^Tp_u
+  $$
+  $\hat r_{ui}$表示用户u对物品i的喜好程度得分。R为Co-occurrence Matrix， U和V分别是user & item matrix。
+
+- LR：  引入上下文、用户和物品等多种特征融合
+  $$
+  f(x)= \frac{1}{1 + e ^ {-(wx + b)}}
+  $$
+
+- POLY2/FM/FFM:  [辛普森悖论](https://zh.wikipedia.org/wiki/辛普森悖论)，多特征交叉， FFM引入特征域（包含相同性质的特征），进一步增强模型的表达能力；
+  $$
+  POLY2(W,X) = \sum\limits_{j_1 = 1}^n\sum \limits_{j_2 = j_1 + 1}^n w_h(j_1,j_2)x_{j_1}x_{j_2}  \\
+  FM(W,X) = \sum\limits_{j_1 = 1}^n\sum \limits_{j_2 = j_1 + 1}^n (w_{j_1} \cdot w_{j_2})x_{j_1}x_{j_2}  \\
+  FFM(W,X) = \sum\limits_{j_1 = 1}^n\sum \limits_{j_2 = j_1 + 1}^n (w_{j_1,f_2} \cdot w_{j_2,f_1 })x_{j_1}x_{j_2}  \\
+  $$
+
+- 深度学习推荐模型
+
+- - NeuralCF: 用神经网络代替矩阵分解中的点积操作；
+  - Deep & Wide @youtube： "泛化能力"和"记忆能力"的结合；
+  - FNN/DeepFM/NFM:  将特征交叉操作引入到MLP中；
+  - DIN/DIEN @alibaba: 在Embedding层和MLP层加入[Attention机制](https://zhuanlan.zhihu.com/p/51623339)
+
+
 
 ## Deep Neural Networks for YouTube Recommendations 
 
@@ -113,3 +158,35 @@ $$
 [PJE] Paul Covington, Jay Adams, Emre Sargin Google,  [Deep Neural Networks for YouTube Recommendations](https://static.googleusercontent.com/media/research.google.com/zh-CN//pubs/archive/45530.pdf) ,  https://zhuanlan.zhihu.com/p/52169807
 
 [HLJ+] Heng-Tze Cheng, Levent Koc, Jeremiah Harmsen, et.al Wide & Deep Learning for Recommender Systems
+
+
+
+# NLP
+
+## Word2Vec
+
+问题： $y = f(x)$.  x是词语，y是上下文词语， f是language model. 判断(x, y)是否是符合自然语言的规则。
+
+f一般有2种：
+
+* skip-gram:  x是给定的词向量，y是上下文最可能出现的词向量, 网络结构如下：
+
+  <img src="./chapter6/skip-gram.png" alt="img" style="zoom:80%;" />
+
+  ​	其中隐藏层的激活函数是线性的，输入x是每个词的 one-hot编码，输出是一个降维之后的词向量（embedding）。输出层是softmax。
+
+* CBOW:  跟skip-gram相反，x是上下文的词向量，y是预测这个词。网络结构如下：
+
+  <img src="./chapter6/cbow.png" alt="img" style="zoom:67%;" />
+
+  ​	
+
+  优化手段：
+
+  * 隐藏层采用词向量求和然后取平均；
+  * 霍夫曼树
+  * hierarchical softmax
+  * negative sampling
+
+## BERT
+
