@@ -357,20 +357,29 @@ Protocol:
 
 https://github.com/PaddlePaddle/PaddleFL/blob/master/core/privc3/boolean_tensor_impl.h
 
-针对NN，利用普通的秘钥共享或者加密电路，需要解决几个特殊的问题：
+针对NN，利用普通的秘钥共享或者加密电路，需要解决几个问题：
 
 1. 浮点数乘法
 2. 非线性函数计算
+3. n维向量运算
+
+整体来说，最开始比较完整的2方实现是SecureML[22]，大于2方的比较高效的有ABY3[18], SecureNN[19], Chameleon[23]，以及学术界比较前沿的有spdz2协议。
 
 #### ABY3[18]
 
-​	三方安全计算协议，机器学习隐私计算框架。
+​	三方安全计算协议，机器学习隐私计算框架。目前[PaddleFL](https://github.com/PaddlePaddle/PaddleFL/tree/master/core/privc3)、[tf-encrypted](https://github.com/tf-encrypted/tf-encrypted/tree/master/tf_encrypted/protocol/aby3)都有相关的实现。
+
+​	该协议提出了SecureML[22]处理浮点数乘法（通过定点数表示）的时候会因为进位丢失或者负数的share变成2个整数，从而出现符号位错误，导致训练不稳定。该协议能高效的处理任何多方的浮点数计算。
+
+​	实现了三方之间算数电路、布尔电路以及姚式电路之间的相互高效转换以及计算，以及通用三方OT，使得ABY3的效率相对很高。对于神经网络，比SecureML[22]快55000X， 对于线性回归迭代次数的比值是5089次/3.7次 每秒。 手写体推理能够做到10ms，而当时最好的Chameleon[23]]协议需要2700ms。
+
+​	下面是一些基本协议。
 
 * Share type:
 
    * Arithmetic Circuit:  $[x]^A = x_1 + x_2 + x_3$ 
    * Boolean Circuit: $[x]^B = x_1 \oplus x_2 \oplus x_3$
-   * Yao's Garble Circuit:  $[x]^Y = LSB(x_1 \oplus x_2)$,  LSB:  Least Significant Bit, 实数的小数部分。相对MSB。
+   * Yao's Garble Circuit: 1个evaluator，2个garbler。 $[x]^Y = LSB(x_2 \oplus x_3)$,   关于这部分比较复杂，涉及到Free-XOR/point-and-permute/half-gate等优化。TBD。
 
   Boolean Circuit可以很方便的实现比较等逻辑运算，Arithmetic Circuit实现算数运算。 论文还给出了三个电路相互转换的算法。 
 
@@ -397,21 +406,27 @@ https://github.com/PaddlePaddle/PaddleFL/blob/master/core/privc3/boolean_tensor_
     $$
     最后： $z = \sum z_i$。
 
-* Decimal multiplication: 定点乘法 
+* Decimal multiplication: 定点乘法 		
 
-  <img src="./chapter4/decimal-mul.png" alt="image-20200924025050212" style="zoom:50%;" />
+   - Secret share version: **2-out-of-2 sharing** from SecureML[22]
 
-  ​		论文提出，经过大量的这种计算之后，会出现较大的精度问题。论文给出了相应的方案（TODO）。
+     <img src="./chapter4/decimal-mul.png" alt="image-20200924025050212" style="zoom:50%;" />
 
-   - Secret share version: **2-out-of-2 sharing**
+     改进的做法如下: 
 
-     * Preprocess:  $[r] \leftarrow Z_{2^m}, [r^{'}] = [r]/2^l  $,  l是LSB的位数。要计算 $z = xy/2^l$。	
+     * Preprocess:  $[r] \leftarrow Z_{2^m}, [r^{'}] = [r]/2^l  $,  l是LSB的位数。要计算 $z = xy/2^l$。$[\cdot]$表示$\cdot$的sharing。	
 
      * 计算：
 
        > 1. $[z^{'}] = [x] * [y] $
        > 2. $t = Reveal([z^{'}] - [r])$
        > 3. $z = t/2^l + [r^{'}]$， + 号两边就是2个share。
+
+     进一步针对n维向量的内积的优化(batching )，可以做到O(1)次通信实现。
+
+  - Secret share version: **2-out-of-3 sharing**
+
+    假设x分成3个share $(x_1^{'}, x_2^{'}, x_3^{'})$， 可以看做$(x_1^{'}, x_2^{'}+ x_3^{'})$代入到上面2-out-of-2 sharing进行扩展。最终：$[x] = $
 
 * 矩阵乘法: $Z = X^{(n, d)} * Y^{d}$ 
 
@@ -454,6 +469,16 @@ https://github.com/PaddlePaddle/PaddleFL/blob/master/core/privc3/boolean_tensor_
   $$
   ReLU可以表示为f(x)  = max(0, x),  更多的激活函数的表示在论文[18]的reference里面可以找到。
 
+#### SecureNN
+
+TBD
+
+#### TF Encrypted
+
+​	TFE其实只是
+
+
+
 ## 参考
 
 1. Peter Kairouz. et.al. Advances and Open Problems in Federated Learning, 2019
@@ -477,3 +502,5 @@ https://github.com/PaddlePaddle/PaddleFL/blob/master/core/privc3/boolean_tensor_
 19. Sameer Wagh*, Divya Gupta, and Nishanth Chandran,    SecureNN: 3-Party Secure Computation for Neural Network Training
 20. Xgboost: A scalable tree boosting system.
 21. https://www.di.ens.fr/~nitulesc/files/slides/MPC-intro.pdf
+22. Mohassel, Payman, and Yupeng Zhang. "Secureml: A system for scalable privacy-preserving machine learning." *2017 IEEE Symposium on Security and Privacy (SP)*. IEEE, 2017.
+23. Riazi, M. Sadegh, et al. "Chameleon: A hybrid secure computation framework for machine learning applications." *Proceedings of the 2018 on Asia Conference on Computer and Communications Security*. 2018.

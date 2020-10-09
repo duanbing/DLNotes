@@ -10,7 +10,11 @@ Bing Duan, 2020.9
 
 **问题描述**
 
-f(user, item, context) ->  item list， f表示推荐算法
+针对函数f, f 表示推荐算法，是user对item的在上下文context中喜好程度的效用函数, $f: U \times I \times C \rightarrow I$, 针对用户$u\in U$, 计算
+
+$\ i_u^{'} = \mathop {arg max}\limits_{i \in I, c \in C} f (u, i, c)$。
+
+
 
 **推荐算法演进**
 
@@ -33,7 +37,7 @@ f(user, item, context) ->  item list， f表示推荐算法
   f(x)= \frac{1}{1 + e ^ {-(wx + b)}}
   $$
 
-- POLY2/FM/FFM:  [辛普森悖论](https://zh.wikipedia.org/wiki/辛普森悖论)，多特征交叉， FFM引入特征域（包含相同性质的特征），进一步增强模型的表达能力；
+- POLY2/FM/FFM:  [辛普森悖论](https://zh.wikipedia.org/wiki/辛普森悖论)，多特征交叉， FFM引入特征域（包含相同性质的特征），相对FM，参数个数增加了F倍（F为域个数），进一步增强模型的表达能力；
   $$
   POLY2(W,X) = \sum\limits_{j_1 = 1}^n\sum \limits_{j_2 = j_1 + 1}^n w_h(j_1,j_2)x_{j_1}x_{j_2}  \\
   FM(W,X) = \sum\limits_{j_1 = 1}^n\sum \limits_{j_2 = j_1 + 1}^n (w_{j_1} \cdot w_{j_2})x_{j_1}x_{j_2}  \\
@@ -44,8 +48,9 @@ f(user, item, context) ->  item list， f表示推荐算法
 
 - - NeuralCF: 用神经网络代替矩阵分解中的点积操作；
   - Deep & Wide @youtube： "泛化能力"和"记忆能力"的结合；
-  - FNN/DeepFM/NFM:  将特征交叉操作引入到MLP中；
-  - DIN/DIEN @alibaba: 在Embedding层和MLP层加入[Attention机制](https://zhuanlan.zhihu.com/p/51623339)
+  - FNN/DeepFM/NFM:  将特征交叉操作引入到MLP中；使用隐向量初始化embedding层参数、FM代替Wide部分以及FM的神经网络化尝试，尝试高阶交叉。
+  - DIN/DIEN @alibaba: 在Embedding层和MLP层加入[Attention机制](https://zhuanlan.zhihu.com/p/51623339),例如利用候选商品和历史行为商品之间的相关性计算权重来表示“注意力”强弱。
+  - 例如利用候选商品和历史行为商品之间的相关性计算权重来表示“注意力”强弱。
 
 
 
@@ -123,7 +128,7 @@ $$
 
 ### 网络模型
 
-<img src="./chapter6/deep-and-wide-overview.png" alt="image-20200913100820543" style="zoom:60%;" />
+![image-20201010012330216](./chapter6/deep-and-wide-overview.png)
 
 ​	
 

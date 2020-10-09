@@ -7,7 +7,7 @@
 	* 挑战：大规模训练数据的产生，导致计算量、训练数据以及模型规模过大，已有的单机方案以及GPU方案出现性能瓶颈；
  * 分布式机器学习的基本流程
    	* 数据和模型划分： 数据划分解决训练数据过大的问题，模型划分解决模型规模太大的问题； 这种划分势必带来通信量的急剧增加， 类似于“分”
-   	* 单机优化： 单机计算本质上是传统的机器学习训练过程；
+      	* 单机优化： 单机计算本质上是传统的机器学习训练过程；
    	* 通信模块： 通信模块在划分，特别是模型划分的系统中扮演着非常重要的角色。解决多机、多线程之间数据共享的问题。当前主流的通信方式有基于Map/Reduce、参数服务器以及数据流的方式。
    	* 数据和模型聚合模块： 类似于“合”，当前节点收集到其所有依赖节点发送的数据，然后进行本地模型训练；
 * 分布式机器学习理论： 从理论部分分析了分布式机器学习算法的收敛速度、加速比和泛化能力。
@@ -224,9 +224,105 @@ $$
 
 <center>图4：  Tensorflow多机/设备运算，图来自[b1]	</center>
 
-​		可以看到当PS和Worker分布不同节点的时候，就需要通过跨进程的传输方式进行参数或者中间加过的传递，对应在数据流通的操作就是将涉及到的边进行分裂，形成不同的子图片段，然后交给不同的Worker进行对应的计算。这种数据流模式非常符合适合参考编译器的实现进行各种CFG优化。例如公共表达式消除等。
+​	可以看到当PS和Worker分布不同节点的时候，就需要通过跨进程的传输方式进行参数或者中间加过的传递，对应在数据流通的操作就是将涉及到的边进行分裂，形成不同的子图片段，然后交给不同的Worker进行对应的计算。这种数据流模式非常符合适合参考编译器的实现进行各种CFG优化。例如公共表达式消除等。
 
+### Tensorflow分布式训练[5]
 
+#### 数据并行
+
+​	分同步和异步数据并行。
+
+<center class="half">    
+  <img src="./chapter3/data-parallel-sync.png" width="400"/>
+  <img src="./chapter3/data-parallel-async.png" width="400"/> 
+</center>
+
+​	所谓同步指的是所有的设备都是采用相同的模型参数来训练，等待所有设备的mini-batch训练完成后，收集它们的梯度然后取均值，然后执行模型的一次参数更新。 异步则是各自更新梯度。
+
+#### 模型并行
+
+<img src="./chapter3/model-parallel.png" alt="img" style="zoom:67%;" />
+
+​		将模型的不同部分分布到多个设备进行训练，深度学习模型一般包含很多层，如果要采用模型并行策略，一般需要将不同的层运行在不同的设备上，但是实际上层与层之间的运行是存在约束的：前向运算时，后面的层需要等待前面层的输出作为输入，而在反向传播时，前面的层又要受限于后面层的计算结果。
+
+#### Tensorflow分布式训练
+
+```
+cluster = tf.train.ClusterSpec({
+    "worker": [
+        "worker0.example.com:2222",
+        "worker1.example.com:2222",
+        "worker2.example.com:2222"
+    ],
+    "ps": [
+        "ps0.example.com:2222",
+        "ps1.example.com:2222"
+    ]
+})
+```
+
+​	上图可以看到，cluster是job的集合。job分为两类 worker和ps，也可以是其他的，通过name区分。每个job分为多个task，通过index区分。
+
+​	上图的spec最终的5个task如下：
+
+```
+/job:worker/task:0
+/job:worker/task:1
+/job:worker/task:2
+/job:ps/task:0
+/job:ps/task:1
+```
+
+​	创建好cluster，需要创建各个task的server，使用`tf.train.Server`函数，比如创建第一个worker的server：
+
+```
+server = tf.train.Server(cluster, job_name="worker", task_index=0)
+```
+
+在创建sever时必须要传入cluster，这样每个server才可以知道自己所在的cluster包含哪些hosts，然后server与server之间才可以通信。sever的创建需要在自己所在host上，一旦所有的server在各自的host上创建好了，整个集群搭建完毕。
+
+​	构建图的时候，通过`tf.device`指定调用到具体的server。 如下：
+
+```
+with tf.device("/job:ps/task:0"):
+  weights_1 = tf.Variable(...)
+  biases_1 = tf.Variable(...)
+
+with tf.device("/job:ps/task:1"):
+  weights_2 = tf.Variable(...)
+  biases_2 = tf.Variable(...)
+
+with tf.device("/job:worker/task:7"):
+  input, labels = ...
+  layer_1 = tf.nn.relu(tf.matmul(input, weights_1) + biases_1)
+  logits = tf.nn.relu(tf.matmul(layer_1, weights_2) + biases_2)
+  # ...
+  train_op = ...
+```
+
+​	构建了Graph后，我们需要创建Session来执行计算图:
+
+```
+with tf.Session("grpc://worker7.example.com:2222") as sess:
+  for _ in range(10000):
+    sess.run(train_op)
+```
+
+​	注意由于是分布式系统，需要指定Session的target参数，或者采用grpc+主机地址，或者直接利用sever.target，两个是完全一样的。
+
+#### Replicated training
+
+1. **In-graph replication**：只构建一个client，这个client构建一个Graph，Graph中包含一套模型参数，放置在ps上，同时Graph中包含模型计算部分的多个副本，每个副本都放置在一个worker上，这样多个worker可以同时训练复制的模型。TensorFlow教程中的使用多个GPUs训练[cifar10分类模型](https://www.tensorflow.org/tutorials/deep_cnn#training_a_model_using_multiple_gpu_cards)就属于这个类型，每个GPUs上的计算子图是相同的，但是属于同一个Graph。这种方法很少使用，因为一旦client挂了，整个系统就全崩溃了，容错能力差。
+
+2. **Between-graph replication**：每个worker都创建一个client，这个client一般还与task的主程序在同一进程中。各个client构建相同的Graph，但是参数还是放置在ps上。这种方式就比较好，一个worker的client挂掉了，系统还可以继续跑。
+
+3. **Asynchronous training**：异步方式训练，各个worker自己干自己的，不需要与其它worker来协调，前面也已经详细介绍了异步训练，上面两种方式都可以采用异步训练。
+
+4. **Synchronous training**：同步训练，各个worker要统一步伐，计算出的梯度要先聚合才可以执行一次模型更新，对于In-graph replication方法，由于各个worker的计算子图属于同一个Graph，很容易实现同步训练。但是对于Between-graph replication方式，各个worker都有自己的client，这就需要系统上的设计了，TensorFlow提供了[tf.train.SyncReplicasOptimizer](https://www.tensorflow.org/api_docs/python/tf/train/SyncReplicasOptimizer)来实现Between-graph replication的同步训练。
+
+   ​	使用tf.train.replica_device_setter可以自动把Graph中的Variables放到ps上，而同时将Graph的计算部分放置在当前worker上。由于ps往往不止一个，这个函数在为各个Variable分配ps时默认采用简单的round-robin方式，就是按次序将参数挨个放到各个ps上，但这个方式可能不能使ps负载均衡，如果需要更加合理，可以采用[tf.contrib.training.GreedyLoadBalancingStrategy](https://www.tensorflow.org/api_docs/python/tf/compat/v1/train/replica_device_setter)策略。
+
+   ​	采用Between-graph replication方式的另外一个问题，由于各个worker都独立拥有自己的client，但是对于一些公共操作比如模型参数初始化与checkpoint文件保存等，如果每个client都独立进行这些操作，显然是对资源的浪费。为了解决这个问题，一般会指定一个worker为chief worker，它将作为各个worker的管家，协调它们之间的训练，并且完成模型初始化和模型保存和恢复等公共操作。
 
 ### 分布式计算理论
 
