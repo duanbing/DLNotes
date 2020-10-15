@@ -135,16 +135,17 @@ class DataCheckpointSaverListener(tf.estimator.CheckpointSaverListener):
         pass
 
     def begin(self):
-        self._ckpt = tf.placeholder(tf.string, name="hello_name")
-        #self.tensor = tf.get_variable(DATA_CHECKPOINT_KEY , initializer= "xxxxxx")
+        ckpt = tf.placeholder(tf.string, name="hello_name")
         var = tf.Variable("invalid invalid", name = DATA_CHECKPOINT_KEY)
-        self.tensor = var.assign(self._ckpt)
+        self.tensor = var.assign(ckpt)
 
     def before_save(self, session, global_step_value):
         print('About to write a checkpoint at step {}'.format(global_step_value))
-        res = session.run(self.tensor, {"hello_name:0": "{}_{}".format(global_step_value, self._salt())})
+        # store the dataset checkpoint here
+        res = session.run(self.tensor, {"hello_name:0": "{}_{}".format(global_step_value, self._current_dataset())})
         print("afrer run", res)
-    def _salt(self):
+    def _current_dataset(self):
+        """get current dataset checkpoint"""
         seed = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
         sa = []
         for i in range(8):
