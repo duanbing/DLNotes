@@ -228,7 +228,20 @@ Protocol:
 
 ​	基于Hash的ORPF PSI是目前效率最高的协议之一。首先其借助于不经意传输，首先实现单个元素(x ?= y)的逐比特比较。然后利用不经意传输扩展方案，将多个2选1-OT协议替换为N选1-OT协议，N可以无穷大，从而实现一次交互实现所有元素检测。
 
-​	本方案属于半诚实安全。详细过程在文献[11]的2个讲解里面有非常清晰的解释。
+​	本方案属于半诚实安全。详细过程在文献[11]的2个讲解里面有非常清晰的解释。[基本过程](https://crypto.stackexchange.com/questions/58246/can-someone-explain-how-oprf-oblivious-pseudo-random-function-is-based-on-ot)如下：
+
+Sender和Receiver先协商出一个Hash函数，Sender创建一个随机初始化的数组G，Sender有一个集合X，将每个元素x hash到G中的一个随机数的索引：
+$$
+m_{p_1} [j] = \mathop \oplus\limits_i G[h_i(x_j)]
+$$
+然后Sender将这些计算出来的值发送给Receiver（因为hash难以逆向破解，因此安全）。 Receiver拥有Y，对于Y中的每个元素y，同样如下计算：
+$$
+ m_{p_2} [j] = \mathop \oplus\limits_i G[h_i(y_j)]
+$$
+
+为了防止Sender知道Receiver hash之后取得了G中哪个元素，这里采用OT。
+
+​	正确性判断： 如果$y_i \in X$， 必然存在 j， 满足： $m_{p_1}[j] = m_{p_2}[i]$。使用传统的OT，通信次数是跟元素个数线性相关的，因此论文引入了batch OT进行优化，达到类似常量的通信次数。	
 
 ### Linear regression[6]
 
