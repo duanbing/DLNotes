@@ -30,7 +30,7 @@ $$
   $$
   X_i = X_j, Y_i = Y_j, I_i \neq I_j, \forall D_i, D_j, i \neq j
   $$
-  
+
 
   <img src="./chapter4/4.1.png" alt="image-20200828081614684" style="zoom:50%;" />
 
@@ -38,7 +38,8 @@ $$
 
   ​	其步骤如下：
 
-  	1. 参与方在本地进行梯度计算，然后将梯度进行加密、添加差分噪音或者基于秘钥共享机制加密本地梯度，然后将加密梯度传递给中心化服务器A；
+  1. 参与方在本地进行梯度计算，然后将梯度进行加密、添加差分噪音或者基于秘钥共享机制加密本地梯度，然后将加密梯度传递给中心化服务器A；
+
    	2. 服务端进行多方安全计算，计算梯度聚合；
    	3. 将聚合计算的梯度结果返回给不同的参与方；
    	4. 参与方解密梯度结果，并且更新本地梯度；
@@ -247,13 +248,13 @@ $$
 
 ​	存在数据集$\{x_i^A\}_{i \in {D_A}}, \{{x_i^B, y_i}\}_{i \in D_B}$, A和B分别初始化其模型参数$\Theta_A,\Theta_B$, C表示协调者。 属于垂直切分场景。
 
-​	目标函数： $\min\limits_{\Theta_A, \Theta_B} \frac{1}{2}\sum\limits_{i}\left\| \Theta_Ax_i^A + \Theta_Bx_i^B - y_i \right\|^2 + \frac{\lambda}{2}(\left\| \Theta_A||^2 + ||\Theta_B\right\|^2)$， 注意这里对论文[6]中的共识做了勘误，我认为是损失函数应该除2，后面的推导才正确。	
+​	目标函数： $\min\limits_{\Theta_A, \Theta_B} \frac{1}{2}\sum\limits_{i}\left\| \Theta_Ax_i^A + \Theta_Bx_i^B - y_i \right\|^2 + \frac{\lambda}{2}(\left\| \Theta_A||^2 + ||\Theta_B\right\|^2)$。	
 
 ​	前提假设：
 
 >  1. 设置 $u_i^A = \Theta_Ax_i^A, u_i^B = \Theta_Bx_i^B $； $[[\cdot]]$ 表示**加法同态**加密, 例如[Paillier同态](https://en.wikipedia.org/wiki/Paillier_cryptosystem)。
 >
->  2. 加密追后的目标函数表示为:  $[[ L ]] = [[\sum\limits_i{\left\|u_i^A + u_i^B - y_i\right\|^2  + \frac{\lambda}{2}(\left\| \Theta_A||^2 + ||\Theta_B\right\|^2)} ]] $ , 展开并且利用支持密文相加的特性可得：
+>  2. 加密之后的目标函数表示为:  $[[ L ]] = [[\sum\limits_i{\left\|u_i^A + u_i^B - y_i\right\|^2  + \frac{\lambda}{2}(\left\| \Theta_A||^2 + ||\Theta_B\right\|^2)} ]] $ , 展开并且利用支持密文相加的特性可得：
 >     $$
 >     \begin{align}
 >     [[L_A]] &= [[\sum\limits_i({u_i^A})^2 + \frac{\lambda}{2}\Theta_A^2]]  \\
@@ -268,8 +269,6 @@ $$
 >     [[ \frac{\partial L}{\partial \Theta_A} ]] = \sum\limits_i[[d_i]]x_i^A + [[\lambda\Theta_A]] \\
 >     [[ \frac{\partial L}{\partial \Theta_B} ]] = \sum\limits_i[[d_i]]x_i^B + [[\lambda\Theta_B]] \\
 >     $$
-
-​				
 
 ​	协议：
 
